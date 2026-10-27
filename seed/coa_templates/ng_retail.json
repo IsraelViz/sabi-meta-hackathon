@@ -1,0 +1,16 @@
+[
+  {"code": "cash",      "name": "Cash",                "kind": "asset"},
+  {"code": "bank",      "name": "Bank / Transfer",     "kind": "asset"},
+  {"code": "ar",        "name": "Accounts Receivable", "kind": "asset"},
+  {"code": "inventory", "name": "Inventory",           "kind": "asset"},
+  {"code": "ap",        "name": "Accounts Payable",    "kind": "liability"},
+  {"code": "vat",       "name": "VAT Payable",         "kind": "liability"},
+  {"code": "equity",    "name": "Owner's Capital",     "kind": "equity"},
+  {"code": "drawings",  "name": "Owner's Drawings",    "kind": "equity"},
+  {"code": "sales",     "name": "Sales",               "kind": "income"},
+  {"code": "cogs",      "name": "Cost of Goods Sold",  "kind": "expense"},
+  {"code": "stock_loss","name": "Stock Loss",          "kind": "expense"},
+  {"code": "transport", "name": "Transport",           "kind": "expense"},
+  {"code": "power",     "name": "Power / Fuel",        "kind": "expense"},
+  {"code": "other_exp", "name": "Other Expenses",      "kind": "expense"}
+]

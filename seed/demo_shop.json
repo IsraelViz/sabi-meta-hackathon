@@ -1,0 +1,28 @@
+{
+  "business": {"name": "Mama Nkechi Provisions", "timezone": "Africa/Lagos"},
+  "products": [
+    {"id": "p-indomie", "name": "Indomie carton", "aliases": ["indomie", "noodles", "super pack", "indomie super pack"], "base_unit": "carton", "sell_price_kobo": 1250000, "reorder_level": 4},
+    {"id": "p-rice", "name": "Rice 50kg bag", "aliases": ["rice", "bag of rice", "foreign rice", "mama gold"], "base_unit": "bag", "sell_price_kobo": 7800000, "reorder_level": 2},
+    {"id": "p-oil", "name": "Groundnut oil 5L", "aliases": ["oil", "groundnut oil", "kings oil", "5 litre oil"], "base_unit": "keg", "sell_price_kobo": 1100000, "reorder_level": 3},
+    {"id": "p-milk", "name": "Peak milk tin", "aliases": ["peak", "milk", "peak milk"], "base_unit": "tin", "sell_price_kobo": 70000, "reorder_level": 12},
+    {"id": "p-spag", "name": "Spaghetti pack", "aliases": ["spaghetti", "golden penny", "spag"], "base_unit": "pack", "sell_price_kobo": 110000, "reorder_level": 20},
+    {"id": "p-sugar", "name": "Sugar bag", "aliases": ["sugar", "dangote sugar"], "base_unit": "bag", "sell_price_kobo": 1650000, "reorder_level": 2},
+    {"id": "p-eggs", "name": "Egg crate", "aliases": ["egg", "eggs", "crate of eggs"], "base_unit": "crate", "sell_price_kobo": 450000, "reorder_level": 5}
+  ],
+  "opening_stock": [
+    {"product_id": "p-indomie", "qty": 12, "unit_cost_kobo": 1100000},
+    {"product_id": "p-rice", "qty": 6, "unit_cost_kobo": 7000000},
+    {"product_id": "p-oil", "qty": 8, "unit_cost_kobo": 950000},
+    {"product_id": "p-milk", "qty": 48, "unit_cost_kobo": 58000},
+    {"product_id": "p-spag", "qty": 60, "unit_cost_kobo": 90000},
+    {"product_id": "p-sugar", "qty": 5, "unit_cost_kobo": 1450000},
+    {"product_id": "p-eggs", "qty": 10, "unit_cost_kobo": 380000}
+  ],
+  "contacts": [
+    {"id": "c-tunde", "name": "Mama Tunde", "aliases": ["mama tunde", "tunde mum"], "kind": "customer"},
+    {"id": "c-chioma", "name": "Chioma", "aliases": ["chi"], "kind": "customer"},
+    {"id": "c-ade", "name": "Mama Ade", "aliases": [], "kind": "customer"},
+    {"id": "c-sule", "name": "Baba Sule", "aliases": ["sule"], "kind": "customer"},
+    {"id": "c-depot", "name": "Alaba Depot", "aliases": ["depot", "alaba"], "kind": "supplier"}
+  ]
+}

@@ -1,0 +1,22 @@
+[project]
+name = "sabi"
+version = "0.1.0"
+description = "WhatsApp-native bookkeeping and promotion agent for Nigerian traders, built on Meta's Muse models"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "httpx>=0.27",
+    "openai>=1.40",
+    "websockets>=12",
+    "psycopg[binary]>=3.2",
+    "python-dotenv>=1.0",
+    "pillow>=10.4",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
