@@ -1,0 +1,13 @@
+{
+  "name": "Sabi Books",
+  "short_name": "Sabi",
+  "description": "Your shop's books, kept from WhatsApp.",
+  "start_url": "./#/today",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FFF8EB",
+  "theme_color": "#E85D04",
+  "icons": [
+    {"src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
+  ]
+}

@@ -34,6 +34,7 @@ class Proposal:
     unclear_amounts: list[dict] = field(default_factory=list)
     # How sure the matcher was about the product and contact names (filled by tools)
     match_scores: dict = field(default_factory=dict)
+    entry_date: date | None = None           # None = today; set for back-dated history (demo seed, imports)
     overpayment_ok: bool = False             # owner confirmed a payment above what is owed
     cancel: bool = False                     # owner tapped Cancel
 
@@ -44,14 +45,16 @@ class Proposal:
     def to_json(self):
         d = asdict(self)
         d["due_date"] = self.due_date.isoformat() if self.due_date else None
+        d["entry_date"] = self.entry_date.isoformat() if self.entry_date else None
         return d
 
     @classmethod
     def from_json(cls, d):
         d = dict(d)
         d["items"] = [Item(**i) for i in d.get("items", [])]
-        if d.get("due_date"):
-            d["due_date"] = date.fromisoformat(d["due_date"])
+        for key in ("due_date", "entry_date"):
+            if d.get(key):
+                d[key] = date.fromisoformat(d[key])
         return cls(**d)
 
 

@@ -10,25 +10,33 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.agent.orchestrator import Agent
+from app.api import router as api_router
 from app.channels import whatsapp
 from app.config import settings
 from app.jobs import daily_summary
-from app.ledger import reports
 from app.ledger.seed import demo_store
+from app.media.evidence_store import PrivateMedia
 from app.media.transcribe import transcribe
 from app.models.llm import LLMClient
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("sabi")
+WEB_DIR = Path(__file__).resolve().parents[1] / "web"
+private_media = PrivateMedia(settings.private_media_dir)
 
 
 def make_store():
     if settings.store == "memory":
-        return demo_store()
+        store = demo_store()
+        if settings.demo_history:   # a week of trading so the owner app has something to show
+            from app.ledger.demo_week import add_history
+            from app.promo.publish import LocalMedia
+            add_history(store, media=LocalMedia())
+        return store
     if settings.store == "postgres":
         from app.ledger.pg_store import PostgresStore
 
@@ -97,17 +105,19 @@ async def process(msg: whatsapp.Inbound):
         elif msg.kind == "button":
             kwargs.update(button_id=msg.button_id, button_title=msg.button_title)
         elif msg.kind == "audio":
-            audio, _ = await whatsapp.download_media(msg.media_id)
+            audio, mime = await whatsapp.download_media(msg.media_id)
+            # Keep the voice note itself: it is the receipt behind every number it produces.
+            media_url = private_media.save(audio, mime)
             text = await transcribe(audio)
             if not text:
                 await whatsapp.send(msg.sender, "I couldn't hear that voice note. Please send it again or type it.")
                 return
             if msg.sender == settings.owner_phone:
                 await whatsapp.send(msg.sender, f"🎙 I heard: “{text}”")
-            kwargs.update(text=text, transcript_of="voice_note", media_url=f"wa-media:{msg.media_id}")
+            kwargs.update(text=text, transcript_of="voice_note", media_url=media_url)
         elif msg.kind == "image":
             data, mime = await whatsapp.download_media(msg.media_id)
-            kwargs.update(text=msg.text or "(photo, no caption)", media_url=f"wa-media:{msg.media_id}",
+            kwargs.update(text=msg.text or "(photo, no caption)", media_url=private_media.save(data, mime),
                           image_data_url=f"data:{mime};base64,{base64.b64encode(data).decode()}")
         else:
             await whatsapp.send(msg.sender, "I can read text, voice notes and photos for now.")
@@ -119,30 +129,15 @@ async def process(msg: whatsapp.Inbound):
         log.exception("failed to process message %s", msg.message_id)
 
 
-# --- read-only API for the owner app ---------------------------------------
+# --- owner app ------------------------------------------------------------
 
-@app.get("/api/report/{kind}")
-def api_report(kind: str, period: str = "today"):
-    try:
-        return reports.report(store, kind, period)
-    except ValueError as e:
-        raise HTTPException(404, str(e))
-
-
-@app.get("/api/entries")
-def api_entries(since_seq: int = 0):
-    out = []
-    for e in store.list_entries(since_seq=since_seq):
-        ev = store.get_evidence(e.evidence_id) if e.evidence_id else None
-        out.append({"id": e.id, "seq": e.seq, "date": e.entry_date, "kind": e.kind, "memo": e.memo,
-                    "status": e.status, "reverses_id": e.reverses_id, "created_by": e.created_by,
-                    "due_date": e.due_date, "contact_id": e.contact_id,
-                    "lines": [l.__dict__ for l in e.lines],
-                    "evidence": ev and {k: ev.get(k) for k in ("channel", "original_text", "normalized_text",
-                                                                "media_url", "model", "prompt_version", "created_at")}})
-    return out
+app.state.store = store
+app.state.owner_token = settings.owner_app_token
+app.state.private_media_dir = settings.private_media_dir
+app.include_router(api_router)
+app.mount("/app", StaticFiles(directory=WEB_DIR, html=True), name="owner-app")
 
 
-@app.get("/api/runs")
-def api_runs(limit: int = 20):
-    return store.recent_runs(limit)
+@app.get("/")
+def root():
+    return RedirectResponse("/app/")

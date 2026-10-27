@@ -89,7 +89,7 @@ def build_entry(p: Proposal, store, created_by) -> Entry:
         raise LedgerError(f"cannot post kind {kind!r}")
 
     return Entry(kind=kind, lines=lines, stock_moves=moves, memo=p.memo, contact_id=contact_id,
-                 due_date=p.due_date, evidence_id=p.evidence_id, created_by=created_by)
+                 due_date=p.due_date, evidence_id=p.evidence_id, created_by=created_by, entry_date=p.entry_date)
 
 
 def commit_proposal(p: Proposal, store, auto_post_limit_kobo, approved=False):
@@ -118,7 +118,10 @@ def reverse(entry_id, store, reason, created_by="agent:approved"):
         if m.qty < 0 and store.stock_on_hand(m.product_id) + m.qty < 0:
             prod = store.get_product(m.product_id)
             raise LedgerError(f"cannot reverse: {prod.name} stock would go below zero")
+    # Dated like the original, so fixing Tuesday's mistake on Thursday corrects Tuesday's
+    # figures instead of making Thursday's sales look lower.
     return store.commit(Entry(kind="reversal", lines=lines, stock_moves=moves,
                               memo=f"Reverses: {original.memo} ({reason})".strip(),
                               contact_id=original.contact_id, reverses_id=original.id,
-                              evidence_id=original.evidence_id, created_by=created_by))
+                              evidence_id=original.evidence_id, created_by=created_by,
+                              entry_date=original.entry_date))

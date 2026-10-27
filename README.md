@@ -69,12 +69,31 @@ Sell → record → learn from the books → promote → sell.
 
 Flyers are served from `/media/` and need a public `PUBLIC_BASE_URL` (tunnel or deployment) so Instagram can fetch them. On Linux, install `fonts-dejavu` or set `FLYER_FONT` so the ₦ sign renders.
 
+## Owner app (`web/`, API in `app/api.py`)
+
+A phone-first web app served at `/app/`. It installs to the home screen and shows the last-loaded data when offline. It is plain HTML, CSS and JS with no build step, and it only reads; changes happen on WhatsApp.
+
+- **Today**: sales and profit (today and this week), cash and bank, who owes, low stock, latest entries, and how many questions are waiting on WhatsApp.
+- **Ledger**: every entry, newest first, grouped by day, with filters. Cancelled entries are struck through and linked to their cancellation.
+- **Evidence viewer**: tap any entry to see where it came from. That includes her exact words (and the voice note or photo itself), how the amounts were read, what Sabi extracted, the model and prompt version, whether it was automatic or she confirmed it, and the balanced double entry.
+- **Owing**: total owed and each customer, with days late. Tap a customer for their statement with a running balance.
+- **Profit**: P&L for today, this week, this month or all time, plus where each ₦100 of sales went.
+- **Posts**: every flyer with its caption, why the books picked that product, and its status.
+
+Every `/api` route needs `OWNER_APP_TOKEN` as a Bearer header. The app asks for the key once, or takes it from a link like `/app/#key=…` and clears it from the address bar. With no token set, only this machine can connect. Voice notes, photos and flyers are served only through the authenticated API, never at public links.
+
+Try it with a week of demo trading:
+
+```
+python scripts/dev_server.py      # then open http://127.0.0.1:8000/app/
+```
+
 ## Storage
 
 `STORE=memory` (default) or `STORE=postgres` with `DATABASE_URL` (Supabase). The Postgres store applies `schema.sql` on start and loads the demo shop into an empty database. Tests run every ledger and agent case on both stores, using an embedded Postgres (`pgserver`), so the triggers are exercised for real.
 
 ## Status
 
-Working and tested (125 tests): the ledger and its database triggers, the Postgres and memory stores, the validator, posting and reversals, the amount normaliser, the agent with both personas, owner approvals, customer orders and payment claims, receipts and notebook pages, the stock-take, the promotion loop, WhatsApp parsing and sending, and the daily summary.
+Working and tested (148 tests), with the owner app also checked by hand at phone size in light and dark mode: the ledger and its database triggers, the Postgres and memory stores, the validator, posting and reversals, the amount normaliser, the agent with both personas, owner approvals, customer orders and payment claims, receipts and notebook pages, the stock-take, the promotion loop, WhatsApp parsing and sending, and the daily summary.
 
-Not yet verified against the live APIs: the Muse Voice Transcribe request format, image input to Muse Spark, the SAM 3.1 endpoint and response, the Muse Image request, tool calling on Baseten, and a real Instagram post. Not built yet: payment reminders and the owner app.
+Not yet verified against the live APIs: the Muse Voice Transcribe request format, image input to Muse Spark, the SAM 3.1 endpoint and response, the Muse Image request, tool calling on Baseten, and a real Instagram post. Not built yet: payment reminders.

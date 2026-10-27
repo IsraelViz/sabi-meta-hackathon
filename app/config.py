@@ -30,6 +30,10 @@ class Settings:
     page_access_token: str = _env("PAGE_ACCESS_TOKEN")
     shop_whatsapp_display: str = _env("SHOP_WHATSAPP_DISPLAY")   # e.g. "0801 234 5678" printed on flyers
 
+    # Owner app: the token her phone sends; voice notes and photos kept as evidence
+    owner_app_token: str = _env("OWNER_APP_TOKEN")
+    private_media_dir: str = _env("PRIVATE_MEDIA_DIR", "private_media")
+
     llm_backend: str = _env("LLM_BACKEND", "meta")
     baseten_api_key: str = _env("BASETEN_API_KEY")
     baseten_base_url: str = _env("BASETEN_BASE_URL", "https://inference.baseten.co/v1")
@@ -43,6 +47,7 @@ class Settings:
 
     owner_phone: str = _env("OWNER_PHONE")
     store: str = _env("STORE", "memory")
+    demo_history: bool = _env("DEMO_HISTORY", "0") == "1"   # memory store only: add a week of demo trading
     database_url: str = _env("DATABASE_URL")
     auto_post_limit_kobo: int = int(_env("AUTO_POST_LIMIT_NAIRA", "50000")) * 100
 
