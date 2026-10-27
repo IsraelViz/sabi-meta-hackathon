@@ -27,6 +27,7 @@ MAX_TOOL_CALLS = 6
 HISTORY_TURNS = 6
 
 _history: dict[str, deque] = defaultdict(lambda: deque(maxlen=HISTORY_TURNS * 2))
+_pending_documents: dict[str, dict] = {}   # photo whose numbers we asked the owner about
 
 
 def _system_prompt(persona, store, customer_name=None):
@@ -43,18 +44,20 @@ def _customer_contact(store, phone, profile_name):
 
 
 class Agent:
-    def __init__(self, store, llm, owner_phone, auto_post_limit_kobo):
+    def __init__(self, store, llm, owner_phone, auto_post_limit_kobo, counter=None):
         self.store = store
         self.llm = llm
         self.owner_phone = owner_phone
         self.limit = auto_post_limit_kobo
+        self.counter = counter          # stock-take counter; None = chosen from settings
 
     def handle(self, *, sender, channel="whatsapp", text=None, button_id=None, button_title=None,
                image_data_url=None, media_url=None, transcript_of=None, profile_name=None):
         """Process one message. Returns the context, whose outbox holds the replies to send."""
         persona = "owner" if sender == self.owner_phone else "customer"
         ctx = RunContext(store=self.store, persona=persona, sender=sender, owner_phone=self.owner_phone,
-                         auto_post_limit_kobo=self.limit)
+                         auto_post_limit_kobo=self.limit, image_data_url=image_data_url, llm=self.llm,
+                         counter=self.counter)
         if persona == "customer":
             ctx.contact_id = _customer_contact(self.store, sender, profile_name).id
 
@@ -96,8 +99,14 @@ class Agent:
             content.append({"type": "image_url", "image_url": {"url": image_data_url}})
         user_msg = {"role": "user", "content": content if image_data_url else user_text}
 
-        messages = [{"role": "system", "content": _system_prompt(ctx.persona, self.store, customer)},
-                    *history, user_msg]
+        system = _system_prompt(ctx.persona, self.store, customer)
+        pending_doc = _pending_documents.pop(ctx.sender, None)
+        if pending_doc:
+            # The owner is probably answering our question about a photo's numbers.
+            system += ("\n\nEarlier photo (already read, numbers did not add up):\n"
+                       + json.dumps(pending_doc, ensure_ascii=False)
+                       + "\nUse the owner's answer to settle the figures, then record with record_batch.")
+        messages = [{"role": "system", "content": system}, *history, user_msg]
         final = None
         for _ in range(MAX_TOOL_CALLS + 1):
             reply = self.llm.chat(messages, tools=tools)
@@ -116,6 +125,8 @@ class Agent:
 
         if final and final.strip():
             ctx.say(final.strip())
+        if ctx.document_issues:
+            _pending_documents[ctx.sender] = {"document": ctx.document, "arithmetic_issues": ctx.document_issues}
         # Keep history short and text-only; images are not re-sent.
         history.append({"role": "user", "content": user_text})
         history.append({"role": "assistant", "content": final or ""})

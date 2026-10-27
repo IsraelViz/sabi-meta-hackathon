@@ -159,6 +159,9 @@ class MemoryStore:
     def get_evidence(self, eid):
         return self.evidence.get(eid)
 
+    def set_evidence_extracted(self, eid, extracted):
+        self.evidence[eid]["extracted_json"] = {**(self.evidence[eid].get("extracted_json") or {}), **extracted}
+
     def add_order(self, contact_id, items, total_kobo, ttl_hours=24):
         oid = new_id()
         self.orders[oid] = {"id": oid, "contact_id": contact_id, "items": items, "total_kobo": total_kobo,

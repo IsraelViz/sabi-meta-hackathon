@@ -222,6 +222,10 @@ class PostgresStore:
     def get_evidence(self, eid):
         return self.conn.execute("select * from evidence where id = %s", (eid,)).fetchone()
 
+    def set_evidence_extracted(self, eid, extracted):
+        self.conn.execute("update evidence set extracted_json = coalesce(extracted_json, '{}'::jsonb) || %s"
+                          " where id = %s", (Jsonb(json.loads(json.dumps(extracted, default=str))), eid))
+
     def add_order(self, contact_id, items, total_kobo, ttl_hours=24):
         return self.conn.execute(
             "insert into orders (id, contact_id, items, total_kobo, expires_at) values (%s, %s, %s, %s, %s) returning *",

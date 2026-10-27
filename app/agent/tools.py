@@ -6,10 +6,12 @@ cannot read the ledger or anyone else's data, whatever the DM says.
 import json
 from datetime import date
 
-from app.agent import orders
+from app.agent import orders, stocktake
 from app.agent.approvals import CANCEL, CONFIRM, buttons_for, describe, submit
 from app.ledger import reports
 from app.ledger.proposals import KINDS, Item, Proposal
+from app.ledger.validator import validate
+from app.media import documents
 from app.normalize.amounts import naira
 from app.normalize.fuzzy import best_match, name_similarity
 
@@ -57,6 +59,16 @@ RECORD = _fn(
     },
     ["kind", "memo"],
 )
+READ_DOC = _fn("read_document",
+                "Read the receipt, supplier invoice or notebook page in the attached photo. Code checks its arithmetic.",
+                {})
+BATCH = _fn("record_batch", "Record several entries from one photo with a single owner confirmation.", {
+    "title": {"type": "string"},
+    "entries": {"type": "array", "items": RECORD["function"]["parameters"]}}, ["entries"])
+STOCK_TAKE = _fn("stock_take",
+                 "Count products in the attached shelf photo and compare with the books. "
+                 "Pass product_ids to count only those; omit to count every countable product.",
+                 {"product_ids": {"type": "array", "items": {"type": "string"}}})
 RECENT = _fn("recent_entries", "The latest ledger entries, newest first, to find one to correct.",
              {"limit": {"type": "integer"}})
 REVERSE = _fn("cancel_entry", "Cancel a wrong entry with a reversing entry. The owner confirms first.",
@@ -80,7 +92,7 @@ PAYMENT_CLAIM = _fn("record_payment_claim",
                         "reference": {"type": ["string", "null"]}}, ["order_id"])
 MY_ORDERS = _fn("my_open_orders", "This customer's open orders.", {})
 
-OWNER_TOOLS = [FIND_PRODUCT, FIND_CONTACT, RECORD, RECENT, REVERSE, REPORT, ASK]
+OWNER_TOOLS = [FIND_PRODUCT, FIND_CONTACT, RECORD, READ_DOC, BATCH, STOCK_TAKE, RECENT, REVERSE, REPORT, ASK]
 CUSTOMER_TOOLS = [CUST_PRODUCT, CREATE_ORDER, PAYMENT_CLAIM, MY_ORDERS]
 
 
@@ -122,6 +134,16 @@ def find_contact(ctx, query):
 
 
 def record_entry(ctx, **a):
+    p, errors = _proposal_from_args(ctx, a)
+    if errors:
+        return {"status": "rejected", "errors": errors}
+    return submit(p, ctx)
+
+
+def _proposal_from_args(ctx, a):
+    """Build a Proposal from tool arguments and apply the checks only code may make. Returns (p, errors)."""
+    if ctx.document_issues:
+        return None, ["the photo's numbers don't add up; wait for the owner to say which figures are right"]
     try:
         p = Proposal(
             kind=a["kind"],
@@ -140,7 +162,7 @@ def record_entry(ctx, **a):
                              for u in a.get("unclear_amounts") or []],
         )
     except (KeyError, TypeError, ValueError) as e:
-        return {"status": "rejected", "errors": [f"bad arguments: {e}"]}
+        return None, [f"bad arguments: {e}"]
 
     # Code, not the model, decides whether money was unclear: every ambiguous
     # amount the normaliser found must be handed to the owner as a question.
@@ -148,15 +170,63 @@ def record_entry(ctx, **a):
         listed = " ".join(u["text"].lower() for u in p.unclear_amounts)
         missing = [m.text for m in ctx.message.ambiguous if m.text.lower() not in listed]
         if missing:
-            return {"status": "rejected", "errors": [
-                f"the message has unclear amounts {missing}; list each in unclear_amounts with its candidates"]}
+            return None, [f"the message has unclear amounts {missing}; list each in unclear_amounts with its candidates"]
 
     ids = [i.product_id for i in p.items] + ([p.contact_id] if p.contact_id else [])
     p.match_scores = {i: ctx.match_scores[i] for i in ids if i in ctx.match_scores}
     unseen = [i for i in ids if i not in ctx.match_scores]
     if unseen:
-        return {"status": "rejected", "errors": [f"look these up with find_product/find_contact first: {unseen}"]}
-    return submit(p, ctx)
+        return None, [f"look these up with find_product/find_contact first: {unseen}"]
+    return p, []
+
+
+def read_document(ctx):
+    if not ctx.image_data_url:
+        return {"error": "no photo in this message"}
+    if ctx.llm is None:
+        return {"error": "vision model not configured"}
+    doc = documents.extract(ctx.llm, ctx.image_data_url)
+    issues = documents.check_arithmetic(doc)
+    ctx.document = doc
+    ctx.store.set_evidence_extracted(ctx.evidence_id, {"document": doc, "arithmetic_issues": issues})
+    if issues:
+        ctx.document_issues = issues
+        ctx.tell_owner("I read the photo, but the numbers don't agree:\n• " + "\n• ".join(issues)
+                       + "\nWhich figures are right? Reply with the correct ones.")
+        return {"status": "waiting_for_owner", "document": doc, "arithmetic_issues": issues,
+                "instruction": "Record nothing from this photo until the owner answers."}
+    return {"status": "ok", "document": doc,
+            "next": "Look up each product and person, then record every line with record_batch."}
+
+
+def record_batch(ctx, entries, title="From your photo"):
+    """Several entries from one photo, confirmed with a single tap. Lines with open questions are asked separately."""
+    built, errors = [], []
+    for i, a in enumerate(entries or []):
+        p, errs = _proposal_from_args(ctx, a)
+        errors += [f"entries[{i}]: {e}" for e in errs]
+        built.append(p)
+    if errors:
+        return {"status": "rejected", "errors": errors}
+    clean, asked = [], []
+    for p in built:
+        v = validate(p, ctx.store, ctx.auto_post_limit_kobo)
+        if v.errors:
+            errors += v.errors
+        elif v.questions:
+            asked.append(submit(p, ctx))     # sends its own question
+        else:
+            clean.append(p)
+    if errors:
+        return {"status": "rejected", "errors": errors}
+    if clean:
+        total = sum(p.items_total_kobo or p.amount_kobo or 0 for p in clean)
+        lines = "\n".join(f"• {describe(p, ctx.store)}" for p in clean)
+        a = ctx.store.add_approval("batch", {"proposals": [p.to_json() for p in clean]},
+                                   f"{title}: {len(clean)} entr{'y' if len(clean) == 1 else 'ies'}, "
+                                   f"{naira(total)}\n{lines}\nRecord all?", [CONFIRM, CANCEL])
+        ctx.tell_owner(a["question"], buttons_for(a))
+    return {"status": "waiting_for_owner", "batched": len(clean), "asked_separately": len(asked)}
 
 
 def recent_entries(ctx, limit=5):
@@ -207,6 +277,8 @@ def my_open_orders(ctx):
 
 OWNER_HANDLERS = {
     "find_product": find_product, "find_contact": find_contact, "record_entry": record_entry,
+    "read_document": read_document, "record_batch": record_batch,
+    "stock_take": lambda ctx, product_ids=None: stocktake.run(ctx, product_ids),
     "recent_entries": recent_entries, "cancel_entry": cancel_entry, "report": report, "ask_owner": ask_owner,
 }
 CUSTOMER_HANDLERS = {

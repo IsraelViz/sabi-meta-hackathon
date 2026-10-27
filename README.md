@@ -48,8 +48,17 @@ uvicorn app.main:app --port 8000
 
 For WhatsApp, expose port 8000 (Cloudflare Tunnel), set the callback to `/webhook/whatsapp`, and fill in the `WA_*`, `META_APP_SECRET` and `OWNER_PHONE` settings.
 
+## Photos
+
+- **Receipts and notebook pages** (`app/media/documents.py`): Muse Spark reads the photo into fixed JSON, and code checks every line and the total. If the numbers don't agree, the owner is asked and nothing is recorded until she answers. Clean lines go to her as one summary with a single Confirm. A line with a problem, such as an odd price, is asked about on its own.
+- **Stock-take** (`app/agent/stocktake.py`): SAM 3.1 counts each countable product in a shelf photo, and code compares the counts with the books. A gap gets three buttons: *Sold, not recorded* / *Damaged or lost* / *Recount*. Her answer becomes a normal entry, with the shelf photo as its evidence. Products not in the photo are skipped, not flagged. Set `STOCKTAKE_BACKEND=vision` to count with Muse Spark instead.
+
+## Storage
+
+`STORE=memory` (default) or `STORE=postgres` with `DATABASE_URL` (Supabase). The Postgres store applies `schema.sql` on start and loads the demo shop into an empty database. Tests run every ledger and agent case on both stores, using an embedded Postgres (`pgserver`), so the triggers are exercised for real.
+
 ## Status
 
-Working and tested: the ledger, the validator, posting and reversals, the amount normaliser, the agent loop with both personas, owner approvals, customer orders and payment claims, WhatsApp parsing and sending, and the daily summary.
+Working and tested (105 tests): the ledger and its database triggers, the Postgres and memory stores, the validator, posting and reversals, the amount normaliser, the agent with both personas, owner approvals, customer orders and payment claims, receipts and notebook pages, the stock-take, WhatsApp parsing and sending, and the daily summary.
 
-Not yet verified against the live API: the Muse Voice Transcribe request format, image input to Muse Spark, and tool calling on Baseten. Not built yet: the Postgres store, receipt arithmetic checks, SAM 3.1 stock-take and cutouts, flyers and Instagram posting, and the owner app.
+Not yet verified against the live API: the Muse Voice Transcribe request format, image input to Muse Spark, the SAM 3.1 endpoint and response, and tool calling on Baseten. Not built yet: SAM cutouts, flyers, Instagram posting, payment reminders, and the owner app.

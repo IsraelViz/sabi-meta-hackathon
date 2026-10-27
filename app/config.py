@@ -19,6 +19,7 @@ class Settings:
     transcribe_model: str = _env("TRANSCRIBE_MODEL", "muse-voice-transcribe-1.0")
     sam_model: str = _env("SAM_MODEL", "sam-3.1")
     sam_endpoint: str = _env("SAM_ENDPOINT")
+    stocktake_backend: str = _env("STOCKTAKE_BACKEND")   # "sam" | "vision"; default: sam if SAM_ENDPOINT is set
 
     llm_backend: str = _env("LLM_BACKEND", "meta")
     baseten_api_key: str = _env("BASETEN_API_KEY")

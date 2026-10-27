@@ -118,6 +118,30 @@ def handle_button(button_id, ctx):
             ctx.say("OK, left as it was.")
         return True
 
+    if a["kind"] == "batch":
+        ctx.store.answer_approval(aid, "approved" if option.get("confirm") else "rejected", option["label"])
+        if not option.get("confirm"):
+            ctx.say("Cancelled. Nothing from the photo was recorded.")
+            return True
+        done, problems = [], []
+        for pj in a["payload"]["proposals"]:
+            result = submit(Proposal.from_json(pj), ctx, approved=True)
+            if result["status"] == "committed":
+                done.append(result["summary"])
+            elif result["status"] == "rejected":
+                problems.append("; ".join(result["errors"]))
+        msg = f"Recorded {len(done)} of {len(a['payload']['proposals'])}."
+        if problems:
+            msg += " Not recorded: " + " | ".join(problems)
+        ctx.say(msg)
+        return True
+
+    if a["kind"] == "stock_gap":
+        from app.agent.stocktake import settle_gap
+        ctx.store.answer_approval(aid, "approved", option["label"])
+        settle_gap(a["payload"], option, ctx)
+        return True
+
     if a["kind"] == "order_paid":
         from app.agent.orders import settle_order
         ctx.store.answer_approval(aid, "approved" if option.get("confirm") else "rejected", option["label"])
