@@ -1,11 +1,11 @@
 -- Sabi ledger schema. Runs on Postgres (Supabase) and on the phone in PGlite.
 -- Money is integer kobo everywhere. Quantities are in each product's base unit.
-
-create extension if not exists pgcrypto;
+-- Ids are text (uuid strings by default) so seed data can use readable ids.
 
 create table if not exists businesses (
-  id            uuid primary key default gen_random_uuid(),
+  id            text primary key default gen_random_uuid()::text,
   name          text not null,
+  payment_details text not null default '',
   currency      text not null default 'NGN',
   minor_units   int  not null default 2,
   timezone      text not null default 'Africa/Lagos',
@@ -24,7 +24,7 @@ create table if not exists accounts (
 );
 
 create table if not exists products (
-  id              uuid primary key default gen_random_uuid(),
+  id              text primary key default gen_random_uuid()::text,
   name            text not null,
   aliases         text[] not null default '{}',
   base_unit       text not null,                -- 'carton', 'bag', 'piece'
@@ -37,7 +37,7 @@ create table if not exists products (
 );
 
 create table if not exists contacts (
-  id        uuid primary key default gen_random_uuid(),
+  id        text primary key default gen_random_uuid()::text,
   name      text not null,
   aliases   text[] not null default '{}',
   phone     text unique,
@@ -46,7 +46,7 @@ create table if not exists contacts (
 );
 
 create table if not exists evidence (
-  id              uuid primary key default gen_random_uuid(),
+  id              text primary key default gen_random_uuid()::text,
   created_at      timestamptz not null default now(),
   channel         text not null,                -- 'whatsapp', 'instagram', 'app'
   sender          text,
@@ -59,15 +59,15 @@ create table if not exists evidence (
 );
 
 create table if not exists journal_entries (
-  id          uuid primary key default gen_random_uuid(),
+  id          text primary key default gen_random_uuid()::text,
   seq         bigserial unique,                 -- sync cursor for the phone
   entry_date  date not null default current_date,
   kind        text not null,                    -- 'sale','purchase','payment_in','payment_out','expense','drawing','stock_loss','reversal'
   memo        text not null default '',
   status      text not null default 'committed' check (status in ('committed','reversed')),
-  reverses_id uuid references journal_entries(id),
-  evidence_id uuid references evidence(id),
-  contact_id  uuid references contacts(id),
+  reverses_id text references journal_entries(id),
+  evidence_id text references evidence(id),
+  contact_id  text references contacts(id),
   due_date    date,                             -- for credit sales and supplier credit
   created_by  text not null,                    -- 'agent:auto', 'agent:approved', 'app'
   created_at  timestamptz not null default now()
@@ -75,12 +75,12 @@ create table if not exists journal_entries (
 
 create table if not exists journal_lines (
   id          bigserial primary key,
-  entry_id    uuid not null references journal_entries(id),
+  entry_id    text not null references journal_entries(id),
   account     text not null references accounts(code),
   debit_kobo  bigint not null default 0,
   credit_kobo bigint not null default 0,
-  product_id  uuid references products(id),
-  contact_id  uuid references contacts(id),
+  product_id  text references products(id),
+  contact_id  text references contacts(id),
   qty         int,
   constraint one_side check (
     (debit_kobo > 0 and credit_kobo = 0) or (credit_kobo > 0 and debit_kobo = 0)
@@ -91,27 +91,27 @@ create index if not exists journal_lines_contact on journal_lines(contact_id, ac
 
 create table if not exists stock_moves (
   id              bigserial primary key,
-  entry_id        uuid not null references journal_entries(id),
-  product_id      uuid not null references products(id),
+  entry_id        text not null references journal_entries(id),
+  product_id      text not null references products(id),
   qty             int not null check (qty <> 0),  -- + in, - out
   unit_cost_kobo  bigint not null check (unit_cost_kobo >= 0)
 );
 create index if not exists stock_moves_product on stock_moves(product_id);
 
 create table if not exists orders (
-  id          uuid primary key default gen_random_uuid(),
-  contact_id  uuid not null references contacts(id),
+  id          text primary key default gen_random_uuid()::text,
+  contact_id  text not null references contacts(id),
   items       jsonb not null,                   -- [{product_id, qty, unit_price_kobo}]
   total_kobo  bigint not null,
   status      text not null default 'open' check (status in ('open','claimed_paid','paid','cancelled','expired')),
   expires_at  timestamptz not null default now() + interval '24 hours',
-  claim_evidence_id uuid references evidence(id),
-  entry_id    uuid references journal_entries(id),
+  claim_evidence_id text references evidence(id),
+  entry_id    text references journal_entries(id),
   created_at  timestamptz not null default now()
 );
 
 create table if not exists approvals (
-  id          uuid primary key default gen_random_uuid(),
+  id          text primary key default gen_random_uuid()::text,
   kind        text not null,                    -- 'proposal', 'order_paid', 'post', 'reminder', 'stock_gap'
   payload     jsonb not null,                   -- the exact proposal that will be committed on Yes
   question    text not null,
@@ -127,9 +127,9 @@ create table if not exists agent_runs (
   created_at    timestamptz not null default now(),
   trigger       text not null,
   persona       text not null,
-  evidence_id   uuid references evidence(id),
+  evidence_id   text references evidence(id),
   tool_calls    jsonb not null default '[]',
-  reply         text,
+  reply         jsonb,
   tokens        int,
   latency_ms    int,
   error         text
@@ -139,7 +139,7 @@ create table if not exists agent_runs (
 create or replace function check_entry_balanced() returns trigger
 language plpgsql as $$
 declare
-  eid uuid := coalesce(new.entry_id, old.entry_id);
+  eid text := coalesce(new.entry_id, old.entry_id);
   d bigint; c bigint;
 begin
   select coalesce(sum(debit_kobo), 0), coalesce(sum(credit_kobo), 0)

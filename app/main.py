@@ -27,7 +27,15 @@ log = logging.getLogger("sabi")
 def make_store():
     if settings.store == "memory":
         return demo_store()
-    raise RuntimeError(f"STORE={settings.store!r} is not wired up yet; use STORE=memory")
+    if settings.store == "postgres":
+        from app.ledger.pg_store import PostgresStore
+
+        pg = PostgresStore(settings.database_url)
+        pg.apply_schema()
+        if pg.is_empty():   # first run: load the demo shop
+            demo_store(store=pg)
+        return pg
+    raise RuntimeError(f"STORE must be 'memory' or 'postgres', not {settings.store!r}")
 
 
 store = make_store()
@@ -132,4 +140,4 @@ def api_entries(since_seq: int = 0):
 
 @app.get("/api/runs")
 def api_runs(limit: int = 20):
-    return store.runs[-limit:][::-1]
+    return store.recent_runs(limit)

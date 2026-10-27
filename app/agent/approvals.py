@@ -94,7 +94,7 @@ def handle_button(button_id, ctx):
 
     if a["kind"] == "proposal":
         if option["label"] == "Other amount":
-            a["payload"]["awaiting_text"] = True
+            ctx.store.update_approval_payload(aid, {**a["payload"], "awaiting_text": True})
             ctx.say("Type the amount, e.g. 12500 or 12.5k.")
             return True
         ctx.store.answer_approval(aid, "approved", option["label"])

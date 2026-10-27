@@ -192,6 +192,9 @@ class MemoryStore:
     def get_approval(self, aid):
         return self.approvals.get(aid)
 
+    def update_approval_payload(self, aid, payload):
+        self.approvals[aid]["payload"] = payload
+
     def answer_approval(self, aid, status, answer):
         self.approvals[aid].update(status=status, answer=answer, answered_at=now())
         return self.approvals[aid]
@@ -201,6 +204,9 @@ class MemoryStore:
 
     def log_run(self, **fields):
         self.runs.append({"created_at": now(), **fields})
+
+    def recent_runs(self, limit=20):
+        return self.runs[-limit:][::-1]
 
 
 def _oldest_open_due(rows):

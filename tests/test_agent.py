@@ -6,7 +6,6 @@ import pytest
 
 from app.agent import orchestrator
 from app.agent.orchestrator import Agent
-from app.ledger.seed import demo_store
 from app.models.llm import Reply, ToolCall
 
 OWNER = "2348000000001"
@@ -38,11 +37,6 @@ def fresh_history():
     orchestrator._history.clear()
 
 
-@pytest.fixture
-def store():
-    return demo_store()
-
-
 def tool_results(llm):
     """All tool messages the model received, parsed."""
     msgs = llm.seen[-1][0]
@@ -66,7 +60,7 @@ def test_pidgin_voice_note_becomes_a_credit_sale(store):
     # Every number has a receipt
     ev = store.get_evidence(ctx.committed[0].evidence_id)
     assert ev["original_text"].startswith("I sell 3 carton")
-    assert store.runs[-1]["tool_calls"][0]["tool"] == "find_product"
+    assert store.recent_runs(1)[0]["tool_calls"][0]["tool"] == "find_product"
 
 
 def test_unclear_amount_cannot_be_skipped_by_the_model(store):

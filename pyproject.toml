@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "pgserver>=0.1"]   # pgserver: embedded Postgres so tests hit the real triggers
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

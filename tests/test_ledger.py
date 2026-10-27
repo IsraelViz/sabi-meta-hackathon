@@ -6,16 +6,10 @@ from app.ledger.model import Entry, LedgerError, Line
 from app.ledger.posting import commit_proposal, reverse
 from app.ledger.proposals import Item, Proposal, apply_patch
 from app.ledger.reports import debtors, profit_and_loss
-from app.ledger.seed import demo_store
 from app.ledger.store import next_avg_cost
 from app.ledger.validator import validate
 
 LIMIT = 50_000_00
-
-
-@pytest.fixture
-def store():
-    return demo_store()
 
 
 def sale(**kw):
@@ -56,6 +50,34 @@ def test_every_committed_entry_balances(store):
                              payment_account="bank"), store, LIMIT)
     for e in store.list_entries():
         assert e.total_debits == e.total_credits > 0
+
+
+def test_database_rejects_tampering_that_bypasses_python(store):
+    """Raw SQL from any client (a bug, a script, the Supabase console) still can't break the books."""
+    if not hasattr(store, "conn"):
+        pytest.skip("Postgres triggers only")
+    import psycopg
+
+    entry, _ = commit_proposal(sale(), store, LIMIT)
+    conn = store.conn
+    with pytest.raises(psycopg.errors.RaiseException, match="unbalanced"):
+        with conn.transaction():
+            conn.execute("insert into journal_entries (id, kind, created_by) values ('x1', 'sale', 'sql')")
+            conn.execute("insert into journal_lines (entry_id, account, debit_kobo) values ('x1', 'cash', 100)")
+            conn.execute("insert into journal_lines (entry_id, account, credit_kobo) values ('x1', 'sales', 90)")
+    with pytest.raises(psycopg.errors.RaiseException, match="no lines"):
+        with conn.transaction():
+            conn.execute("insert into journal_entries (id, kind, created_by) values ('x2', 'sale', 'sql')")
+    with pytest.raises(psycopg.errors.RaiseException, match="append-only"):
+        conn.execute("update journal_lines set debit_kobo = 1 where entry_id = %s and debit_kobo > 0", (entry.id,))
+    with pytest.raises(psycopg.errors.RaiseException, match="append-only"):
+        conn.execute("delete from journal_entries where id = %s", (entry.id,))
+    with pytest.raises(psycopg.errors.RaiseException, match="committed to reversed"):
+        conn.execute("update journal_entries set memo = 'edited' where id = %s", (entry.id,))
+    with pytest.raises(psycopg.errors.CheckViolation):
+        conn.execute("insert into journal_lines (entry_id, account, debit_kobo, credit_kobo) values (%s, 'cash', 5, 5)",
+                     (entry.id,))
+    assert store.get_entry(entry.id).memo == entry.memo
 
 
 # --- the worked example from the plan -----------------------------------

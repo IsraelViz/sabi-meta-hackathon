@@ -12,9 +12,13 @@ def chart_of_accounts(template="ng_retail"):
     return json.loads((SEED / "coa_templates" / f"{template}.json").read_text(encoding="utf-8"))
 
 
-def demo_store(path=SEED / "demo_shop.json"):
+def demo_store(path=SEED / "demo_shop.json", store=None):
+    """The demo shop in a fresh MemoryStore, or loaded into the (empty) store given."""
     data = json.loads(Path(path).read_text(encoding="utf-8"))
-    store = MemoryStore(chart_of_accounts())
+    if store is None:
+        store = MemoryStore(chart_of_accounts())
+    else:
+        store.seed_accounts(chart_of_accounts())
     load_shop(store, data)
     return store
 
