@@ -42,7 +42,20 @@ create table if not exists contacts (
   aliases   text[] not null default '{}',
   phone     text unique,
   ig_handle text,
-  kind      text not null default 'customer' check (kind in ('customer','supplier'))
+  kind      text not null default 'customer' check (kind in ('customer','supplier')),
+  last_inbound_at timestamptz                  -- last message from them; WhatsApp's 24-hour window
+);
+alter table contacts add column if not exists last_inbound_at timestamptz;
+
+create table if not exists reminders (
+  id          text primary key default gen_random_uuid()::text,
+  created_at  timestamptz not null default now(),
+  contact_id  text not null references contacts(id),
+  owed_kobo   bigint not null,
+  mode        text not null check (mode in ('session','template')),  -- free text inside 24h, template outside
+  body        text not null,                    -- exactly what the customer sees
+  status      text not null default 'draft' check (status in ('draft','sent','skipped','failed')),
+  error       text
 );
 
 create table if not exists evidence (

@@ -70,7 +70,14 @@ async def download_media(media_id) -> tuple[bytes, str]:
     return data, meta.get("mime_type", "application/octet-stream")
 
 
-def build_payload(to, body, buttons=None, image_url=None):
+def build_payload(to, body, buttons=None, image_url=None, template=None):
+    if template:
+        # Outside the 24-hour window WhatsApp only delivers pre-approved templates;
+        # `body` is just our record of what the template renders to.
+        return {"messaging_product": "whatsapp", "to": to, "type": "template", "template": {
+            "name": template["name"], "language": {"code": template.get("language", "en")},
+            "components": [{"type": "body", "parameters": [{"type": "text", "text": str(p)}
+                                                          for p in template.get("params", [])]}]}}
     if image_url and buttons:
         # Flyer preview with Post / Change / Skip under it, in one message
         return {"messaging_product": "whatsapp", "to": to, "type": "interactive", "interactive": {
@@ -91,8 +98,8 @@ def build_payload(to, body, buttons=None, image_url=None):
     return {"messaging_product": "whatsapp", "to": to, "type": "text", "text": {"body": body[:4096]}}
 
 
-async def send(to, body, buttons=None, image_url=None):
-    payload = build_payload(to, body, buttons, image_url)
+async def send(to, body, buttons=None, image_url=None, template=None):
+    payload = build_payload(to, body, buttons, image_url, template)
     async with httpx.AsyncClient(timeout=30) as client:
         r = await client.post(f"{GRAPH}/{settings.graph_version}/{settings.wa_phone_number_id}/messages",
                               headers=_headers(), json=payload)

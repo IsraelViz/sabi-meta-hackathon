@@ -124,6 +124,23 @@ def test_other_amount_then_typed_answer(store):
     assert store.account_balance("ar", "c-ade") == 350_000
 
 
+def test_pending_question_does_not_swallow_unrelated_messages(store):
+    from app.ledger.posting import commit_proposal
+    from app.ledger.proposals import Item, Proposal
+    commit_proposal(Proposal(kind="sale", items=[Item("p-oil", 2, 1_100_000)], contact_id="c-chioma", paid_kobo=0),
+                    store, LIMIT)
+    agent = Agent(store, ScriptedLLM(["Profit today is ..."]), OWNER, LIMIT)
+    from app.agent.approvals import submit
+    from app.agent.context import RunContext
+    submit(Proposal(kind="payment_in", contact_id="c-chioma", payment_account="cash"),
+           RunContext(store, "owner", OWNER, OWNER, LIMIT))        # asks "How much ...? Type the amount."
+    other = agent.handle(sender=OWNER, text="how much profit I make today?")
+    assert other.outbox[0].body == "Profit today is ..."           # went to the model, not the question
+    answered = agent.handle(sender=OWNER, text="15k")
+    assert [e.kind for e in answered.committed] == ["payment_in"]
+    assert store.account_balance("ar", "c-chioma") == 700_000
+
+
 def test_customer_cannot_use_owner_tools(store):
     llm = ScriptedLLM([
         [("record_entry", {"kind": "payment_in", "contact_id": "c-tunde", "amount_naira": 37500,

@@ -69,6 +69,14 @@ Sell → record → learn from the books → promote → sell.
 
 Flyers are served from `/media/` and need a public `PUBLIC_BASE_URL` (tunnel or deployment) so Instagram can fetch them. On Linux, install `fonts-dejavu` or set `FLYER_FONT` so the ₦ sign renders.
 
+## Payment reminders (`app/agent/reminders.py`)
+
+- **Ways to start one**: tap **Send reminders** in the 8 pm summary (drafts for the three most overdue customers), or say "remind Mama Tunde" (`send_reminder`). Every reminder is a preview with **Send / Change / Skip**. Nothing reaches a customer until she taps Send.
+- **WhatsApp's 24-hour rule**: if the customer messaged in the last 24 hours, Muse Spark drafts a warm reminder in her voice, and she can tap *Change* ("softer", "in Pidgin"). Otherwise WhatsApp only delivers an approved template. She then sees exactly the template wording with the name and amount filled in, and *Change* isn't offered.
+- **Amounts come from the books**: a draft that mentions any other amount is rewritten once, then replaced by a fixed polite wording. On Send, the balance is checked again. If the customer paid in the meantime, nothing goes out.
+- **No spamming**: never twice in a day. The 8 pm button skips anyone reminded in the last 3 days. It also names customers with no WhatsApp number, and she can give Sabi a number in chat (`set_contact_phone`). Numbers like 0803… are saved as 234803….
+- **Template setup (once)**: `python scripts/create_reminder_template.py` prints the request; add `--submit` with `WABA_ID` and `WA_ACCESS_TOKEN` to send it to Meta for approval.
+
 ## Owner app (`web/`, API in `app/api.py`)
 
 A phone-first web app served at `/app/`. It installs to the home screen and shows the last-loaded data when offline. It is plain HTML, CSS and JS with no build step, and it only reads; changes happen on WhatsApp.
@@ -94,6 +102,6 @@ python scripts/dev_server.py      # then open http://127.0.0.1:8000/app/
 
 ## Status
 
-Working and tested (148 tests), with the owner app also checked by hand at phone size in light and dark mode: the ledger and its database triggers, the Postgres and memory stores, the validator, posting and reversals, the amount normaliser, the agent with both personas, owner approvals, customer orders and payment claims, receipts and notebook pages, the stock-take, the promotion loop, WhatsApp parsing and sending, and the daily summary.
+Working and tested (176 tests), with the owner app also checked by hand at phone size in light and dark mode: the ledger and its database triggers, the Postgres and memory stores, the validator, posting and reversals, the amount normaliser, the agent with both personas, owner approvals, customer orders and payment claims, receipts and notebook pages, the stock-take, the promotion loop, WhatsApp parsing and sending, and the daily summary.
 
-Not yet verified against the live APIs: the Muse Voice Transcribe request format, image input to Muse Spark, the SAM 3.1 endpoint and response, the Muse Image request, tool calling on Baseten, and a real Instagram post. Not built yet: payment reminders.
+Not yet verified against the live APIs: the Muse Voice Transcribe request format, image input to Muse Spark, the SAM 3.1 endpoint and response, the Muse Image request, tool calling on Baseten, a real Instagram post, and the reminder template (it needs Meta's approval).

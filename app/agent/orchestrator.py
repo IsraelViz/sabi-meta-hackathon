@@ -36,6 +36,22 @@ def _system_prompt(persona, store, customer_name=None):
     return text.format(shop=shop, today=date.today().strftime("%A %d %B %Y"), customer=customer_name or "unknown")
 
 
+def _make_post(ctx):
+    from app.promo.flow import make_promo
+    result = make_promo(ctx, ctx.promo)
+    if "error" in result:
+        ctx.say(f"I can't make a post right now: {result['error']}")
+
+
+def _send_reminders(ctx):
+    from app.agent.reminders import offer_all
+    offer_all(ctx)
+
+
+# The 8 pm summary's buttons are handled by code: same result every time, no model call.
+SUMMARY_BUTTONS = {"summary:reminders": _send_reminders, "summary:post": _make_post}
+
+
 def _customer_contact(store, phone, profile_name):
     c = store.contact_by_phone(phone)
     if c is None:
@@ -70,6 +86,7 @@ class Agent:
             ctx.promo_source = lambda: self.promo
         if persona == "customer":
             ctx.contact_id = _customer_contact(self.store, sender, profile_name).id
+            self.store.touch_inbound(ctx.contact_id)   # opens WhatsApp's 24-hour free-text window
 
         raw = text or button_title or ""
         ctx.message = normalize(raw) if raw else None
@@ -82,6 +99,9 @@ class Agent:
         started = time.monotonic()
         error = None
         try:
+            if persona == "owner" and button_id in SUMMARY_BUTTONS:
+                SUMMARY_BUTTONS[button_id](ctx)
+                return ctx
             if persona == "owner" and button_id and approvals.handle_button(button_id, ctx):
                 return ctx
             if persona == "owner" and text and not image_data_url and approvals.handle_typed_answer(text, ctx):

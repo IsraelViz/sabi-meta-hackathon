@@ -1,6 +1,6 @@
 """Plain data types for the ledger. No I/O here."""
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 
 PAYMENT_ACCOUNTS = ("cash", "bank")
 EXPENSE_ACCOUNTS = ("transport", "power", "other_exp")
@@ -36,6 +36,7 @@ class Contact:
     phone: str | None = None
     aliases: list[str] = field(default_factory=list)
     ig_handle: str | None = None
+    last_inbound_at: datetime | None = None   # last message from them (WhatsApp 24-hour window)
 
 
 @dataclass

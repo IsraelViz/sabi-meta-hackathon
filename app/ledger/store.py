@@ -40,6 +40,7 @@ class MemoryStore:
         self.approvals: dict[str, dict] = {}
         self.runs: list[dict] = []
         self.posts: dict[str, dict] = {}
+        self.reminders: dict[str, dict] = {}
         self._seq = itertools.count(1)
 
     # --- catalogue -------------------------------------------------------
@@ -68,6 +69,29 @@ class MemoryStore:
 
     def contact_by_phone(self, phone):
         return next((c for c in self.contacts.values() if c.phone == phone), None)
+
+    def set_contact_phone(self, cid, phone):
+        self.contacts[cid].phone = phone
+
+    def touch_inbound(self, cid, when=None):
+        self.contacts[cid].last_inbound_at = when or now()
+
+    def add_reminder(self, **f):
+        rid = new_id()
+        self.reminders[rid] = {"id": rid, "created_at": now(), "status": "draft", "error": None, **f}
+        return dict(self.reminders[rid])
+
+    def get_reminder(self, rid):
+        r = self.reminders.get(rid)
+        return dict(r) if r else None
+
+    def update_reminder(self, rid, **fields):
+        self.reminders[rid].update(fields)
+        return dict(self.reminders[rid])
+
+    def list_reminders(self, contact_id=None):
+        return sorted((dict(r) for r in self.reminders.values() if contact_id is None or r["contact_id"] == contact_id),
+                      key=lambda r: r["created_at"], reverse=True)
 
     # --- ledger ----------------------------------------------------------
     def commit(self, entry: Entry) -> Entry:

@@ -6,7 +6,7 @@ cannot read the ledger or anyone else's data, whatever the DM says.
 import json
 from datetime import date
 
-from app.agent import orders, stocktake
+from app.agent import orders, reminders, stocktake
 from app.agent.approvals import CANCEL, CONFIRM, buttons_for, describe, submit
 from app.ledger import reports
 from app.ledger.proposals import KINDS, Item, Proposal
@@ -77,6 +77,13 @@ MAKE_PROMO = _fn(
     "Omit product_id to let the books pick. Without a photo it asks her for one.",
     {"product_id": {"type": ["string", "null"]},
      "scene": {"type": "string", "description": "Optional background idea, e.g. 'kitchen', 'market stall'"}})
+SEND_REMINDER = _fn("send_reminder",
+                    "Draft a payment reminder to a customer who owes, and send the owner the wording to approve.",
+                    {"contact_id": {"type": "string"},
+                     "instruction": {"type": ["string", "null"], "description": "How she wants it worded, if she said"}},
+                    ["contact_id"])
+SET_PHONE = _fn("set_contact_phone", "Save a customer's or supplier's WhatsApp number that the owner gave you.",
+                {"contact_id": {"type": "string"}, "phone": {"type": "string"}}, ["contact_id", "phone"])
 RECENT = _fn("recent_entries", "The latest ledger entries, newest first, to find one to correct.",
              {"limit": {"type": "integer"}})
 REVERSE = _fn("cancel_entry", "Cancel a wrong entry with a reversing entry. The owner confirms first.",
@@ -101,7 +108,7 @@ PAYMENT_CLAIM = _fn("record_payment_claim",
 MY_ORDERS = _fn("my_open_orders", "This customer's open orders.", {})
 
 OWNER_TOOLS = [FIND_PRODUCT, FIND_CONTACT, RECORD, READ_DOC, BATCH, STOCK_TAKE, PROMO_IDEAS, MAKE_PROMO,
-               RECENT, REVERSE, REPORT, ASK]
+               SEND_REMINDER, SET_PHONE, RECENT, REVERSE, REPORT, ASK]
 CUSTOMER_TOOLS = [CUST_PRODUCT, CREATE_ORDER, PAYMENT_CLAIM, MY_ORDERS]
 
 
@@ -238,6 +245,32 @@ def record_batch(ctx, entries, title="From your photo"):
     return {"status": "waiting_for_owner", "batched": len(clean), "asked_separately": len(asked)}
 
 
+def normalize_phone(raw):
+    """Nigerian numbers to WhatsApp's digits-only international form: 0803 123 4567 -> 2348031234567."""
+    digits = "".join(ch for ch in raw if ch.isdigit())
+    if digits.startswith("0") and len(digits) == 11:        # 0803 123 4567
+        return "234" + digits[1:]
+    if len(digits) == 10 and digits[0] in "789":            # 803 123 4567
+        return "234" + digits
+    if digits.startswith("234"):                           # +234 803 123 4567
+        return digits if len(digits) == 13 else None
+    return digits if 10 <= len(digits) <= 15 and not digits.startswith("0") else None   # other countries
+
+
+def set_contact_phone(ctx, contact_id, phone):
+    contact = ctx.store.get_contact(contact_id)
+    if contact is None:
+        return {"error": "no such contact; use find_contact"}
+    number = normalize_phone(phone)
+    if number is None:
+        return {"error": f"{phone!r} doesn't look like a phone number; ask her to check it"}
+    other = ctx.store.contact_by_phone(number)
+    if other and other.id != contact_id:
+        return {"error": f"that number already belongs to {other.name}"}
+    ctx.store.set_contact_phone(contact_id, number)
+    return {"status": "saved", "contact": contact.name, "phone": number}
+
+
 def recent_entries(ctx, limit=5):
     entries = ctx.store.list_entries()[-max(1, min(limit or 5, 20)):]
     out = []
@@ -288,6 +321,8 @@ OWNER_HANDLERS = {
     "find_product": find_product, "find_contact": find_contact, "record_entry": record_entry,
     "read_document": read_document, "record_batch": record_batch,
     "stock_take": lambda ctx, product_ids=None: stocktake.run(ctx, product_ids),
+    "send_reminder": lambda ctx, contact_id, instruction=None: reminders.offer(ctx, contact_id, instruction),
+    "set_contact_phone": lambda ctx, contact_id, phone: set_contact_phone(ctx, contact_id, phone),
     "promo_ideas": lambda ctx: promo_flow.ideas(ctx),
     "make_promo": lambda ctx, product_id=None, scene="default": promo_flow.make_promo(ctx, ctx.promo, product_id, scene),
     "recent_entries": recent_entries, "cancel_entry": cancel_entry, "report": report, "ask_owner": ask_owner,

@@ -178,17 +178,17 @@ def services(tmp_path):
 
 def test_make_post_asks_for_photo_then_drafts_and_posts_on_tap(store, services):
     llm = ScriptedLLM([
-        [("make_promo", {})],
-        "I've sent you my pick.",
         [("make_promo", {"product_id": "PLACEHOLDER"})],
         "Indomie carton dey for ₦12,500 per carton! Send us a WhatsApp message. #Lagos #NaijaShop",
         "Here's the draft.",
     ])
     agent = Agent(store, llm, OWNER, LIMIT, promo=services)
+    # The 8 pm summary's button is handled by code: the books pick, she is asked for a photo
     ask = agent.handle(sender=OWNER, button_id="summary:post", button_title="Make tomorrow's post")
-    pick = tool_results(llm)[0]
-    assert pick["status"] == "need_photo"
+    top = ranking.rank(store, limit=1)[0]
+    pick = {"product_id": top.product_id, "name": top.name}
     assert ask.outbox[0].body.startswith(f"My pick to promote: *{pick['name']}*")
+    assert llm.seen == []
 
     llm.turns[0] = [("make_promo", {"product_id": pick["product_id"]})]
     draft = agent.handle(sender=OWNER, text="here", image_data_url=shelf_photo())

@@ -124,7 +124,14 @@ async def process(msg: whatsapp.Inbound):
             return
         ctx = await asyncio.to_thread(lambda: agent.handle(**kwargs))
         for out in ctx.outbox:
-            await whatsapp.send(out.to, out.body, out.buttons, out.image_url)
+            try:
+                await whatsapp.send(out.to, out.body, out.buttons, out.image_url, out.template)
+            except Exception as e:
+                log.exception("send to %s failed", out.to)
+                reminder_id = out.reminder_id
+                if reminder_id:   # a reminder didn't go out: record it and tell her
+                    store.update_reminder(reminder_id, status="failed", error=str(e)[:500])
+                    await whatsapp.send(settings.owner_phone, f"⚠ The payment reminder didn't send: {e}")
     except Exception:
         log.exception("failed to process message %s", msg.message_id)
 

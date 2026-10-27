@@ -30,6 +30,11 @@ class Settings:
     page_access_token: str = _env("PAGE_ACCESS_TOKEN")
     shop_whatsapp_display: str = _env("SHOP_WHATSAPP_DISPLAY")   # e.g. "0801 234 5678" printed on flyers
 
+    # Payment reminders outside WhatsApp's 24-hour window must use an approved template
+    waba_id: str = _env("WABA_ID")   # WhatsApp Business Account id, only for creating the template
+    reminder_template: str = _env("WA_REMINDER_TEMPLATE", "payment_reminder")
+    reminder_template_lang: str = _env("WA_REMINDER_TEMPLATE_LANG", "en")
+
     # Owner app: the token her phone sends; voice notes and photos kept as evidence
     owner_app_token: str = _env("OWNER_APP_TOKEN")
     private_media_dir: str = _env("PRIVATE_MEDIA_DIR", "private_media")

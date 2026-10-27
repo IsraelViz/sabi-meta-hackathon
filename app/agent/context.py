@@ -10,6 +10,8 @@ class Outgoing:
     body: str
     buttons: list[dict] = field(default_factory=list)   # [{"id": str, "title": str}], max 3
     image_url: str | None = None
+    template: dict | None = None    # {"name", "language", "params"}: required outside the 24-hour window
+    reminder_id: str | None = None  # set on payment reminders, so a failed send can be recorded
 
 
 @dataclass
@@ -39,8 +41,8 @@ class RunContext:
             raise RuntimeError("promotion is only available to the owner")
         return self.promo_source()
 
-    def say(self, body, buttons=None, to=None, image_url=None):
-        self.outbox.append(Outgoing(to or self.sender, body, buttons or [], image_url))
+    def say(self, body, buttons=None, to=None, image_url=None, template=None):
+        self.outbox.append(Outgoing(to or self.sender, body, buttons or [], image_url, template))
 
     def tell_owner(self, body, buttons=None):
         self.say(body, buttons, to=self.owner_phone)

@@ -19,7 +19,7 @@ SCHEMA = Path(__file__).with_name("schema.sql")
 
 _PRODUCT_COLS = ("id", "name", "aliases", "base_unit", "sell_price_kobo", "min_price_kobo", "max_price_kobo",
                  "avg_cost_kobo", "reorder_level", "countable")
-_CONTACT_COLS = ("id", "name", "kind", "phone", "aliases", "ig_handle")
+_CONTACT_COLS = ("id", "name", "kind", "phone", "aliases", "ig_handle", "last_inbound_at")
 
 
 class PostgresStore:
@@ -88,6 +88,30 @@ class PostgresStore:
 
     def list_contacts(self):
         return [self._contact(r) for r in self.conn.execute("select * from contacts order by name")]
+
+    def set_contact_phone(self, cid, phone):
+        self.conn.execute("update contacts set phone = %s where id = %s", (phone, cid))
+
+    def touch_inbound(self, cid, when=None):
+        self.conn.execute("update contacts set last_inbound_at = %s where id = %s", (when or now(), cid))
+
+    def add_reminder(self, **f):
+        f = {"id": new_id(), **f}
+        cols = ", ".join(f)
+        return self.conn.execute(f"insert into reminders ({cols}) values ({', '.join('%(' + k + ')s' for k in f)})"
+                                 " returning *", f).fetchone()
+
+    def get_reminder(self, rid):
+        return self.conn.execute("select * from reminders where id = %s", (rid,)).fetchone()
+
+    def update_reminder(self, rid, **fields):
+        sets = ", ".join(f"{k} = %({k})s" for k in fields)
+        return self.conn.execute(f"update reminders set {sets} where id = %(rid_)s returning *",
+                                 {**fields, "rid_": rid}).fetchone()
+
+    def list_reminders(self, contact_id=None):
+        return self.conn.execute("select * from reminders where (%s::text is null or contact_id = %s::text)"
+                                 " order by created_at desc", (contact_id, contact_id)).fetchall()
 
     def contact_by_phone(self, phone):
         return self._contact(self.conn.execute("select * from contacts where phone = %s", (phone,)).fetchone())
