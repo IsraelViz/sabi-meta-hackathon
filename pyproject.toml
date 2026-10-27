@@ -12,6 +12,7 @@ dependencies = [
     "psycopg[binary]>=3.2",
     "python-dotenv>=1.0",
     "pillow>=10.4",
+    "tzdata>=2024.1",   # zoneinfo has no time zone data on Windows without it
 ]
 
 [project.optional-dependencies]
