@@ -7,9 +7,11 @@ import base64
 import logging
 from collections import deque
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.agent.orchestrator import Agent
 from app.channels import whatsapp
@@ -55,6 +57,9 @@ async def lifespan(_app):
 
 
 app = FastAPI(title="Sabi", lifespan=lifespan)
+# Flyers must be reachable at a public URL for Instagram and the WhatsApp preview.
+Path(settings.media_dir).mkdir(parents=True, exist_ok=True)
+app.mount("/media", StaticFiles(directory=settings.media_dir), name="media")
 
 
 @app.get("/health")

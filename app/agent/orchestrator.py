@@ -44,12 +44,20 @@ def _customer_contact(store, phone, profile_name):
 
 
 class Agent:
-    def __init__(self, store, llm, owner_phone, auto_post_limit_kobo, counter=None):
+    def __init__(self, store, llm, owner_phone, auto_post_limit_kobo, counter=None, promo=None):
         self.store = store
         self.llm = llm
         self.owner_phone = owner_phone
         self.limit = auto_post_limit_kobo
         self.counter = counter          # stock-take counter; None = chosen from settings
+        self._promo = promo             # PromoServices; None = built from settings on first use
+
+    @property
+    def promo(self):
+        if self._promo is None:
+            from app.promo.flow import default_services
+            self._promo = default_services()
+        return self._promo
 
     def handle(self, *, sender, channel="whatsapp", text=None, button_id=None, button_title=None,
                image_data_url=None, media_url=None, transcript_of=None, profile_name=None):
@@ -58,6 +66,8 @@ class Agent:
         ctx = RunContext(store=self.store, persona=persona, sender=sender, owner_phone=self.owner_phone,
                          auto_post_limit_kobo=self.limit, image_data_url=image_data_url, llm=self.llm,
                          counter=self.counter)
+        if persona == "owner":
+            ctx.promo_source = lambda: self.promo
         if persona == "customer":
             ctx.contact_id = _customer_contact(self.store, sender, profile_name).id
 

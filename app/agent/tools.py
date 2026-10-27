@@ -12,6 +12,7 @@ from app.ledger import reports
 from app.ledger.proposals import KINDS, Item, Proposal
 from app.ledger.validator import validate
 from app.media import documents
+from app.promo import flow as promo_flow
 from app.normalize.amounts import naira
 from app.normalize.fuzzy import best_match, name_similarity
 
@@ -69,6 +70,13 @@ STOCK_TAKE = _fn("stock_take",
                  "Count products in the attached shelf photo and compare with the books. "
                  "Pass product_ids to count only those; omit to count every countable product.",
                  {"product_ids": {"type": "array", "items": {"type": "string"}}})
+PROMO_IDEAS = _fn("promo_ideas", "Which products the books say are worth promoting now, with the reasons.", {})
+MAKE_PROMO = _fn(
+    "make_promo",
+    "Make a flyer and caption from the owner's shelf photo and send her the preview to approve. "
+    "Omit product_id to let the books pick. Without a photo it asks her for one.",
+    {"product_id": {"type": ["string", "null"]},
+     "scene": {"type": "string", "description": "Optional background idea, e.g. 'kitchen', 'market stall'"}})
 RECENT = _fn("recent_entries", "The latest ledger entries, newest first, to find one to correct.",
              {"limit": {"type": "integer"}})
 REVERSE = _fn("cancel_entry", "Cancel a wrong entry with a reversing entry. The owner confirms first.",
@@ -92,7 +100,8 @@ PAYMENT_CLAIM = _fn("record_payment_claim",
                         "reference": {"type": ["string", "null"]}}, ["order_id"])
 MY_ORDERS = _fn("my_open_orders", "This customer's open orders.", {})
 
-OWNER_TOOLS = [FIND_PRODUCT, FIND_CONTACT, RECORD, READ_DOC, BATCH, STOCK_TAKE, RECENT, REVERSE, REPORT, ASK]
+OWNER_TOOLS = [FIND_PRODUCT, FIND_CONTACT, RECORD, READ_DOC, BATCH, STOCK_TAKE, PROMO_IDEAS, MAKE_PROMO,
+               RECENT, REVERSE, REPORT, ASK]
 CUSTOMER_TOOLS = [CUST_PRODUCT, CREATE_ORDER, PAYMENT_CLAIM, MY_ORDERS]
 
 
@@ -279,6 +288,8 @@ OWNER_HANDLERS = {
     "find_product": find_product, "find_contact": find_contact, "record_entry": record_entry,
     "read_document": read_document, "record_batch": record_batch,
     "stock_take": lambda ctx, product_ids=None: stocktake.run(ctx, product_ids),
+    "promo_ideas": lambda ctx: promo_flow.ideas(ctx),
+    "make_promo": lambda ctx, product_id=None, scene="default": promo_flow.make_promo(ctx, ctx.promo, product_id, scene),
     "recent_entries": recent_entries, "cancel_entry": cancel_entry, "report": report, "ask_owner": ask_owner,
 }
 CUSTOMER_HANDLERS = {

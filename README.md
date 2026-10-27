@@ -53,12 +53,28 @@ For WhatsApp, expose port 8000 (Cloudflare Tunnel), set the callback to `/webhoo
 - **Receipts and notebook pages** (`app/media/documents.py`): Muse Spark reads the photo into fixed JSON, and code checks every line and the total. If the numbers don't agree, the owner is asked and nothing is recorded until she answers. Clean lines go to her as one summary with a single Confirm. A line with a problem, such as an odd price, is asked about on its own.
 - **Stock-take** (`app/agent/stocktake.py`): SAM 3.1 counts each countable product in a shelf photo, and code compares the counts with the books. A gap gets three buttons: *Sold, not recorded* / *Damaged or lost* / *Recount*. Her answer becomes a normal entry, with the shelf photo as its evidence. Products not in the photo are skipped, not flagged. Set `STOCKTAKE_BACKEND=vision` to count with Muse Spark instead.
 
+## Promotion loop (`app/promo/`)
+
+Sell → record → learn from the books → promote → sell.
+
+1. **Code picks the product** (`ranking.py`). It looks for plenty of stock (weeks of cover at the usual sales rate), a good margin, and slower sales than usual this week. Anything at or below its reorder level is never promoted. The reason comes straight from the books, e.g. "44 tin in stock, about 44 weeks' worth, sold 4 this week vs 1.0 usual, 17% margin (₦120 per tin)".
+2. **SAM 3.1 cuts out her real product** from a shelf photo (`cutout.py`). It accepts a PNG mask, a polygon or a box. If SAM fails, it falls back to a crop of her photo. The product is never redrawn by AI, which avoids fake-looking packaging and trademark trouble.
+3. **Muse Image makes an empty background**, with no products, logos or text (`imagegen.py`).
+4. **Pillow builds the flyer** (`compose.py`): 1080×1350 portrait for Instagram. The shop name, product, price and how to order are all drawn by code from the books. It uses a font that has the ₦ sign and falls back to "N12,500" rather than draw a broken box.
+5. **Muse Spark writes the caption** in her voice (`caption.py`). Code rejects any caption with a price other than the list price, asks once for a rewrite, then uses a safe template.
+6. **She sees the preview on WhatsApp** (image + **Post / Change / Skip**). Nothing goes public until she taps Post. *Change* takes her words ("more Pidgin", "different background") and redrafts.
+7. **Publish** (`publish.py`): Instagram content publishing (create the container, then publish), plus the linked Facebook Page if `FB_PAGE_ID` is set. Every post is stored with its reason, caption, the tools that made it, and the platform post ids.
+
+![Sample flyer](docs/sample_flyer.jpg)
+
+Flyers are served from `/media/` and need a public `PUBLIC_BASE_URL` (tunnel or deployment) so Instagram can fetch them. On Linux, install `fonts-dejavu` or set `FLYER_FONT` so the ₦ sign renders.
+
 ## Storage
 
 `STORE=memory` (default) or `STORE=postgres` with `DATABASE_URL` (Supabase). The Postgres store applies `schema.sql` on start and loads the demo shop into an empty database. Tests run every ledger and agent case on both stores, using an embedded Postgres (`pgserver`), so the triggers are exercised for real.
 
 ## Status
 
-Working and tested (105 tests): the ledger and its database triggers, the Postgres and memory stores, the validator, posting and reversals, the amount normaliser, the agent with both personas, owner approvals, customer orders and payment claims, receipts and notebook pages, the stock-take, WhatsApp parsing and sending, and the daily summary.
+Working and tested (125 tests): the ledger and its database triggers, the Postgres and memory stores, the validator, posting and reversals, the amount normaliser, the agent with both personas, owner approvals, customer orders and payment claims, receipts and notebook pages, the stock-take, the promotion loop, WhatsApp parsing and sending, and the daily summary.
 
-Not yet verified against the live API: the Muse Voice Transcribe request format, image input to Muse Spark, the SAM 3.1 endpoint and response, and tool calling on Baseten. Not built yet: SAM cutouts, flyers, Instagram posting, payment reminders, and the owner app.
+Not yet verified against the live APIs: the Muse Voice Transcribe request format, image input to Muse Spark, the SAM 3.1 endpoint and response, the Muse Image request, tool calling on Baseten, and a real Instagram post. Not built yet: payment reminders and the owner app.

@@ -122,6 +122,23 @@ create table if not exists approvals (
   created_at  timestamptz not null default now()
 );
 
+create table if not exists posts (
+  id             text primary key default gen_random_uuid()::text,
+  created_at     timestamptz not null default now(),
+  product_id     text references products(id),
+  reason         text not null default '',        -- why the books picked this product
+  caption        text not null,
+  caption_source text not null default 'model',   -- 'model' | 'template'
+  asset_url      text,                            -- public URL of the flyer
+  asset_path     text,
+  cutout_path    text,                            -- kept so a "Change" can re-compose
+  background_path text,
+  tools          jsonb not null default '{}',     -- which cutter / background model made it
+  status         text not null default 'draft' check (status in ('draft','published','skipped','failed')),
+  platform_ids   jsonb,
+  error          text
+);
+
 create table if not exists agent_runs (
   id            bigserial primary key,
   created_at    timestamptz not null default now(),

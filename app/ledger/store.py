@@ -39,6 +39,7 @@ class MemoryStore:
         self.orders: dict[str, dict] = {}
         self.approvals: dict[str, dict] = {}
         self.runs: list[dict] = []
+        self.posts: dict[str, dict] = {}
         self._seq = itertools.count(1)
 
     # --- catalogue -------------------------------------------------------
@@ -133,6 +134,12 @@ class MemoryStore:
         return sum(l.debit_kobo - l.credit_kobo for _, l in self._lines(start, end)
                    if l.account == code and (contact_id is None or l.contact_id == contact_id))
 
+    def sales_qty(self, pid, start=None, end=None):
+        """Units sold in a date range, ignoring sales that were cancelled."""
+        return sum(l.qty or 0 for e, l in self._lines(start, end)
+                   if l.account == "sales" and l.product_id == pid
+                   and e.status != "reversed" and e.kind != "reversal")
+
     def receivables(self):
         """[(contact_id, balance_kobo, oldest_open_due_date)] for customers who owe."""
         by_contact = {}
@@ -204,6 +211,23 @@ class MemoryStore:
 
     def pending_approvals(self):
         return [a for a in self.approvals.values() if a["status"] == "pending"]
+
+    def add_post(self, **fields):
+        pid = new_id()
+        self.posts[pid] = {"id": pid, "created_at": now(), "status": "draft", "platform_ids": None, "error": None,
+                           "tools": {}, **fields}
+        return dict(self.posts[pid])
+
+    def get_post(self, pid):
+        p = self.posts.get(pid)
+        return dict(p) if p else None
+
+    def update_post(self, pid, **fields):
+        self.posts[pid].update(fields)
+        return dict(self.posts[pid])
+
+    def list_posts(self):
+        return sorted((dict(p) for p in self.posts.values()), key=lambda p: p["created_at"], reverse=True)
 
     def log_run(self, **fields):
         self.runs.append({"created_at": now(), **fields})

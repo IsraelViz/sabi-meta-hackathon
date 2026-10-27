@@ -136,6 +136,13 @@ def handle_button(button_id, ctx):
         ctx.say(msg)
         return True
 
+    if a["kind"] == "post":
+        from app.promo.flow import settle_post
+        if option.get("action") != "change":
+            ctx.store.answer_approval(aid, "approved" if option.get("action") == "post" else "rejected", option["label"])
+        settle_post(a, option, ctx, ctx.promo)
+        return True
+
     if a["kind"] == "stock_gap":
         from app.agent.stocktake import settle_gap
         ctx.store.answer_approval(aid, "approved", option["label"])
@@ -152,7 +159,14 @@ def handle_button(button_id, ctx):
 
 
 def handle_typed_answer(text, ctx):
-    """If the owner owes us a typed answer (an amount or a name), apply it. Returns True if handled."""
+    """If the owner owes us a typed answer (an amount, a name, a post change), apply it. Returns True if handled."""
+    post_edits = [a for a in ctx.store.pending_approvals() if a["kind"] == "post" and a["payload"].get("awaiting_text")]
+    if post_edits:
+        from app.promo.flow import revise_post
+        a = max(post_edits, key=lambda x: x["created_at"])
+        ctx.store.answer_approval(a["id"], "rejected", f"change: {text}")
+        revise_post(a, text, ctx, ctx.promo)
+        return True
     waiting = [a for a in ctx.store.pending_approvals()
                if a["kind"] == "proposal" and (a["payload"].get("awaiting_text") or
                                                (a["payload"].get("text_path") and not a["options"]))]

@@ -20,6 +20,15 @@ class Settings:
     sam_model: str = _env("SAM_MODEL", "sam-3.1")
     sam_endpoint: str = _env("SAM_ENDPOINT")
     stocktake_backend: str = _env("STOCKTAKE_BACKEND")   # "sam" | "vision"; default: sam if SAM_ENDPOINT is set
+    image_model: str = _env("IMAGE_MODEL", "muse-image-1.0")
+
+    # Promotion: public URL for flyers (tunnel or deployment), Instagram and Facebook Page
+    public_base_url: str = _env("PUBLIC_BASE_URL").rstrip("/")
+    media_dir: str = _env("MEDIA_DIR", "media_cache")
+    ig_user_id: str = _env("IG_USER_ID")
+    fb_page_id: str = _env("FB_PAGE_ID")
+    page_access_token: str = _env("PAGE_ACCESS_TOKEN")
+    shop_whatsapp_display: str = _env("SHOP_WHATSAPP_DISPLAY")   # e.g. "0801 234 5678" printed on flyers
 
     llm_backend: str = _env("LLM_BACKEND", "meta")
     baseten_api_key: str = _env("BASETEN_API_KEY")

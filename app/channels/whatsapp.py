@@ -71,6 +71,14 @@ async def download_media(media_id) -> tuple[bytes, str]:
 
 
 def build_payload(to, body, buttons=None, image_url=None):
+    if image_url and buttons:
+        # Flyer preview with Post / Change / Skip under it, in one message
+        return {"messaging_product": "whatsapp", "to": to, "type": "interactive", "interactive": {
+            "type": "button",
+            "header": {"type": "image", "image": {"link": image_url}},
+            "body": {"text": body[:1024]},
+            "action": {"buttons": [{"type": "reply", "reply": {"id": b["id"][:256], "title": b["title"][:20]}}
+                                   for b in buttons[:3]]}}}
     if image_url:
         return {"messaging_product": "whatsapp", "to": to, "type": "image",
                 "image": {"link": image_url, "caption": body[:1024]}}

@@ -190,6 +190,14 @@ class PostgresStore:
             (code, contact_id, contact_id, start, start, end, end)).fetchone()
         return int(row["b"])
 
+    def sales_qty(self, pid, start=None, end=None):
+        row = self.conn.execute(
+            "select coalesce(sum(l.qty), 0) as q from journal_lines l join journal_entries e on e.id = l.entry_id"
+            " where l.account = 'sales' and l.product_id = %s and e.status <> 'reversed' and e.kind <> 'reversal'"
+            " and (%s::date is null or e.entry_date >= %s::date) and (%s::date is null or e.entry_date <= %s::date)",
+            (pid, start, start, end, end)).fetchone()
+        return int(row["q"])
+
     def receivables(self):
         rows = self.conn.execute(
             "select e.entry_date, e.due_date, l.contact_id, l.debit_kobo, l.credit_kobo from journal_lines l"
@@ -263,6 +271,29 @@ class PostgresStore:
 
     def pending_approvals(self):
         return self.conn.execute("select * from approvals where status = 'pending' order by created_at").fetchall()
+
+    _POST_JSON = ("tools", "platform_ids")
+
+    def _post_params(self, fields):
+        return {k: Jsonb(v) if k in self._POST_JSON and v is not None else v for k, v in fields.items()}
+
+    def add_post(self, **fields):
+        fields = {"id": new_id(), **fields}
+        cols = ", ".join(fields)
+        vals = ", ".join(f"%({k})s" for k in fields)
+        return self.conn.execute(f"insert into posts ({cols}) values ({vals}) returning *",
+                                 self._post_params(fields)).fetchone()
+
+    def get_post(self, pid):
+        return self.conn.execute("select * from posts where id = %s", (pid,)).fetchone()
+
+    def update_post(self, pid, **fields):
+        sets = ", ".join(f"{k} = %({k})s" for k in fields)
+        return self.conn.execute(f"update posts set {sets} where id = %(pid_)s returning *",
+                                 {**self._post_params(fields), "pid_": pid}).fetchone()
+
+    def list_posts(self):
+        return self.conn.execute("select * from posts order by created_at desc").fetchall()
 
     def log_run(self, **f):
         self.conn.execute(

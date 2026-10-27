@@ -27,10 +27,17 @@ class RunContext:
     document: dict | None = None          # what read_document extracted from the photo
     document_issues: list = field(default_factory=list)   # arithmetic problems; recording is blocked until settled
     counter: object = None                # stock-take counter (SAM or vision), injectable for tests
+    promo_source: object = None           # zero-arg callable returning PromoServices; built only when needed
     outbox: list[Outgoing] = field(default_factory=list)
     match_scores: dict = field(default_factory=dict)   # id -> best fuzzy score seen this run
     committed: list = field(default_factory=list)
     tool_log: list = field(default_factory=list)
+
+    @property
+    def promo(self):
+        if self.promo_source is None:
+            raise RuntimeError("promotion is only available to the owner")
+        return self.promo_source()
 
     def say(self, body, buttons=None, to=None, image_url=None):
         self.outbox.append(Outgoing(to or self.sender, body, buttons or [], image_url))
