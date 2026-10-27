@@ -3,7 +3,6 @@ import json
 
 import pytest
 
-from app.agent import orchestrator
 from app.agent.orchestrator import Agent
 from app.agent.stocktake import compare, tolerance
 from app.media.counting import SamCounter, _detections
@@ -14,10 +13,6 @@ LIMIT = 50_000_00
 PHOTO = "data:image/jpeg;base64,AAAA"
 
 
-@pytest.fixture(autouse=True)
-def fresh_state():
-    orchestrator._history.clear()
-    orchestrator._pending_documents.clear()
 
 
 def receipt(lines, total, doc_type="supplier_receipt"):
@@ -85,13 +80,14 @@ def test_receipt_that_doesnt_add_up_is_asked_about_not_recorded(store):
             "payment_account": "cash", "memo": "sugar"}]})],
         "",
     ])
-    ctx = Agent(store, llm, OWNER, LIMIT).handle(sender=OWNER, text="receipt", image_data_url=PHOTO)
+    agent = Agent(store, llm, OWNER, LIMIT)
+    ctx = agent.handle(sender=OWNER, text="receipt", image_data_url=PHOTO)
     assert "numbers don't agree" in ctx.outbox[0].body
     assert "Sugar: 2 × ₦14,500 = ₦29,000, but the line says ₦30,000" in ctx.outbox[0].body
     assert tool_results(llm)[-1]["status"] == "rejected"
     assert store.stock_on_hand("p-sugar") == 5
     # The next message gets the earlier document in its prompt
-    assert OWNER in orchestrator._pending_documents
+    assert OWNER in agent._pending_documents
 
 
 def test_notebook_page_batches_clean_lines_and_asks_about_the_odd_one(store):

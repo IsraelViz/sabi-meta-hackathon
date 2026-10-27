@@ -35,6 +35,12 @@ class Settings:
     reminder_template: str = _env("WA_REMINDER_TEMPLATE", "payment_reminder")
     reminder_template_lang: str = _env("WA_REMINDER_TEMPLATE_LANG", "en")
 
+    # Public "Try Sabi" demo at /demo/: per-visitor shops, with limits so it can't run up the model bill
+    demo_enabled: bool = _env("DEMO_ENABLED", "1") == "1"
+    demo_max_messages: int = int(_env("DEMO_MAX_MESSAGES", "40"))      # per visitor session
+    demo_daily_messages: int = int(_env("DEMO_DAILY_MESSAGES", "2000"))  # across all visitors
+    demo_max_sessions: int = int(_env("DEMO_MAX_SESSIONS", "200"))
+
     # Owner app: the token her phone sends; voice notes and photos kept as evidence
     owner_app_token: str = _env("OWNER_APP_TOKEN")
     private_media_dir: str = _env("PRIVATE_MEDIA_DIR", "private_media")

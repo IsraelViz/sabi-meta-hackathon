@@ -3,7 +3,6 @@ from datetime import timedelta
 
 import pytest
 
-from app.agent import orchestrator
 from app.agent.orchestrator import Agent
 from app.agent.reminders import TEMPLATE_TEXT, in_window, wording_problems
 from app.agent.tools import normalize_phone
@@ -18,9 +17,6 @@ LIMIT = 50_000_00
 TUNDE, CHIOMA = "2348030000001", "2348030000002"
 
 
-@pytest.fixture(autouse=True)
-def fresh_state():
-    orchestrator._history.clear()
 
 
 @pytest.fixture

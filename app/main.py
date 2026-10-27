@@ -144,6 +144,24 @@ app.state.private_media_dir = settings.private_media_dir
 app.include_router(api_router)
 app.mount("/app", StaticFiles(directory=WEB_DIR, html=True), name="owner-app")
 
+_demo_registry = None
+
+
+def demo_registry():
+    global _demo_registry
+    if _demo_registry is None:
+        from app.demo import DemoRegistry
+        _demo_registry = DemoRegistry(agent.llm, max_sessions=settings.demo_max_sessions,
+                                      max_messages=settings.demo_max_messages,
+                                      daily_messages=settings.demo_daily_messages)
+    return _demo_registry
+
+
+if settings.demo_enabled:
+    from app.demo import make_router as make_demo_router
+    app.include_router(make_demo_router(demo_registry))
+    app.mount("/demo", StaticFiles(directory=WEB_DIR / "demo", html=True), name="demo")
+
 
 @app.get("/")
 def root():

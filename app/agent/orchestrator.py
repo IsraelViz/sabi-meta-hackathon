@@ -26,8 +26,6 @@ PROMPT_VERSION = "2026-10-27.1"
 MAX_TOOL_CALLS = 6
 HISTORY_TURNS = 6
 
-_history: dict[str, deque] = defaultdict(lambda: deque(maxlen=HISTORY_TURNS * 2))
-_pending_documents: dict[str, dict] = {}   # photo whose numbers we asked the owner about
 
 
 def _system_prompt(persona, store, customer_name=None):
@@ -67,6 +65,9 @@ class Agent:
         self.limit = auto_post_limit_kobo
         self.counter = counter          # stock-take counter; None = chosen from settings
         self._promo = promo             # PromoServices; None = built from settings on first use
+        # Conversation state belongs to this agent (one shop), never shared across shops or demo visitors.
+        self._history: dict[str, deque] = defaultdict(lambda: deque(maxlen=HISTORY_TURNS * 2))
+        self._pending_documents: dict[str, dict] = {}   # photo whose numbers we asked the owner about
 
     @property
     def promo(self):
@@ -118,9 +119,13 @@ class Agent:
         return ctx
 
     def _run_model(self, ctx, image_data_url):
+        if self.llm is None:
+            ctx.say("The AI model isn't connected yet, so right now I can only handle button taps and "
+                    "answers to my questions.")
+            return
         tools, handlers = toolset(ctx.persona)
         customer = self.store.get_contact(ctx.contact_id).name if ctx.contact_id else None
-        history = _history[ctx.sender]
+        history = self._history[ctx.sender]
         user_text = ctx.message.text if ctx.message else "(no text)"
         if ctx.message and ctx.message.text != ctx.message.original:
             user_text += f"\n\n(original words: {ctx.message.original})"
@@ -130,7 +135,7 @@ class Agent:
         user_msg = {"role": "user", "content": content if image_data_url else user_text}
 
         system = _system_prompt(ctx.persona, self.store, customer)
-        pending_doc = _pending_documents.pop(ctx.sender, None)
+        pending_doc = self._pending_documents.pop(ctx.sender, None)
         if pending_doc:
             # The owner is probably answering our question about a photo's numbers.
             system += ("\n\nEarlier photo (already read, numbers did not add up):\n"
@@ -156,7 +161,7 @@ class Agent:
         if final and final.strip():
             ctx.say(final.strip())
         if ctx.document_issues:
-            _pending_documents[ctx.sender] = {"document": ctx.document, "arithmetic_issues": ctx.document_issues}
+            self._pending_documents[ctx.sender] = {"document": ctx.document, "arithmetic_issues": ctx.document_issues}
         # Keep history short and text-only; images are not re-sent.
         history.append({"role": "user", "content": user_text})
         history.append({"role": "assistant", "content": final or ""})

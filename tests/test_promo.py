@@ -7,7 +7,6 @@ import httpx
 import pytest
 from PIL import Image, ImageDraw
 
-from app.agent import orchestrator
 from app.agent.orchestrator import Agent
 from app.ledger.posting import commit_proposal
 from app.ledger.proposals import Item, Proposal
@@ -23,10 +22,6 @@ from tests.test_agent import OWNER, ScriptedLLM, tool_results
 LIMIT = 50_000_00
 
 
-@pytest.fixture(autouse=True)
-def fresh_state():
-    orchestrator._history.clear()
-    orchestrator._pending_documents.clear()
 
 
 def shelf_photo():

@@ -77,6 +77,16 @@ Flyers are served from `/media/` and need a public `PUBLIC_BASE_URL` (tunnel or 
 - **No spamming**: never twice in a day. The 8 pm button skips anyone reminded in the last 3 days. It also names customers with no WhatsApp number, and she can give Sabi a number in chat (`set_contact_phone`). Numbers like 0803… are saved as 234803….
 - **Template setup (once)**: `python scripts/create_reminder_template.py` prints the request; add `--submit` with `WABA_ID` and `WA_ACCESS_TOKEN` to send it to Meta for approval.
 
+## Try it: the public demo (`/demo/`, `app/demo.py`)
+
+WhatsApp test numbers only reach a few verified phones, so anyone (judges included) can try Sabi in the browser instead. The page shows two WhatsApp-style phones and the live books:
+
+- **Owner phone**: type, send a photo (receipt, notebook page, shelf), or record a voice note. Tap the buttons Sabi sends back. The **🌙 8 pm summary** button sends the evening summary on demand.
+- **Mama Tunde's phone**: a regular customer who owes money. Ask for prices, order, send a "transfer screenshot", receive reminders.
+- **The books**: today's sales and profit, cash and bank, latest entries, who owes, and stock. All of it updates as you chat.
+
+It runs the same agent, validator, ledger and approvals as WhatsApp. Each visitor gets a private copy of the demo shop, with a week of history. Nothing reaches a real shop, WhatsApp number or Instagram account: posts are recorded, never published. Limits keep the model bill bounded: 40 messages per visitor, 2,000 a day overall, 200 live sessions, and sessions expire after 2 hours (all set in `.env`). With no model key, it says so and still handles buttons and typed answers.
+
 ## Owner app (`web/`, API in `app/api.py`)
 
 A phone-first web app served at `/app/`. It installs to the home screen and shows the last-loaded data when offline. It is plain HTML, CSS and JS with no build step, and it only reads; changes happen on WhatsApp.
@@ -102,6 +112,6 @@ python scripts/dev_server.py      # then open http://127.0.0.1:8000/app/
 
 ## Status
 
-Working and tested (176 tests), with the owner app also checked by hand at phone size in light and dark mode: the ledger and its database triggers, the Postgres and memory stores, the validator, posting and reversals, the amount normaliser, the agent with both personas, owner approvals, customer orders and payment claims, receipts and notebook pages, the stock-take, the promotion loop, WhatsApp parsing and sending, and the daily summary.
+Working and tested (185 tests), with the owner app also checked by hand at phone size in light and dark mode: the ledger and its database triggers, the Postgres and memory stores, the validator, posting and reversals, the amount normaliser, the agent with both personas, owner approvals, customer orders and payment claims, receipts and notebook pages, the stock-take, the promotion loop, payment reminders, the public two-phone demo, WhatsApp parsing and sending, and the daily summary.
 
 Not yet verified against the live APIs: the Muse Voice Transcribe request format, image input to Muse Spark, the SAM 3.1 endpoint and response, the Muse Image request, tool calling on Baseten, a real Instagram post, and the reminder template (it needs Meta's approval).

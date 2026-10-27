@@ -4,7 +4,6 @@ import json
 
 import pytest
 
-from app.agent import orchestrator
 from app.agent.orchestrator import Agent
 from app.models.llm import Reply, ToolCall
 
@@ -32,9 +31,6 @@ class ScriptedLLM:
         return Reply(None, calls, 0, self.model, raw)
 
 
-@pytest.fixture(autouse=True)
-def fresh_history():
-    orchestrator._history.clear()
 
 
 def tool_results(llm):
