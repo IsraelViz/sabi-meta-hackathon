@@ -20,6 +20,7 @@ def demo_store(path=SEED / "demo_shop.json"):
 
 
 def load_shop(store, data):
+    store.business = data.get("business", {})
     for p in data["products"]:
         store.add_product(Product(**p))
     for c in data["contacts"]:

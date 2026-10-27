@@ -21,6 +21,8 @@ MATCH_THRESHOLD = 0.85
 class Question:
     text: str
     options: list[dict] = field(default_factory=list)   # [{"label": str, "patch": [{"path", "value"}]}]
+    # Where a typed answer goes: a proposal path for an amount, or "contact" for a name.
+    text_path: str | None = None
 
 
 @dataclass
@@ -83,7 +85,10 @@ def _check_unclear(p, v):
         v.questions.append(Question(
             f"I heard \"{u.get('text', '?')}\". Which amount did you mean?",
             [_opt(naira(c), (path, c), (f"unclear_amounts.{i}", None)) for c in cands[:2]] + [_opt("Other amount")],
+            text_path=path,
         ))
+        # Settle one unclear amount at a time; indices shift once it is answered.
+        return
 
 
 def _check_contact(p, store, v):
@@ -110,7 +115,8 @@ def _check_items(p, store, v, need_price):
         if not isinstance(it.qty, int) or it.qty <= 0:
             v.errors.append(f"items[{i}]: qty must be a whole number above 0")
         if need_price and it.unit_price_kobo is None:
-            v.questions.append(Question(f"How much per {prod.base_unit} for {prod.name}?", [_opt("Other amount")]))
+            v.questions.append(Question(f"How much per {prod.base_unit} for {prod.name}? Type the amount.", [],
+                                        text_path=f"items.{i}.unit_price_kobo"))
         products.append((i, it, prod))
     return products
 
@@ -157,6 +163,7 @@ def _check_sale(p, store, v):
                 [_opt(f"Yes, {naira(it.unit_price_kobo)}", (f"items.{i}.price_confirmed", True)),
                  _opt(f"No, {naira(prod.sell_price_kobo)}", (f"items.{i}.unit_price_kobo", prod.sell_price_kobo)),
                  _opt("Other amount")],
+                text_path=f"items.{i}.unit_price_kobo",
             ))
         _check_stock(store, v, i, it, prod)
     if v.errors:
@@ -164,7 +171,8 @@ def _check_sale(p, store, v):
     total = p.items_total_kobo
     _check_paid(p, v, total)
     if p.paid_kobo is not None and p.paid_kobo < total and not _has_contact(p):
-        v.questions.append(Question(f"Who owes the {naira(total - p.paid_kobo)} balance?", []))
+        v.questions.append(Question(f"Who owes the {naira(total - p.paid_kobo)} balance? Type the name.", [],
+                                    text_path="contact"))
 
 
 def _check_purchase(p, store, v):
@@ -174,12 +182,13 @@ def _check_purchase(p, store, v):
     total = p.items_total_kobo
     _check_paid(p, v, total)
     if p.paid_kobo is not None and p.paid_kobo < total and not _has_contact(p):
-        v.questions.append(Question(f"Which supplier do you owe the {naira(total - p.paid_kobo)} balance?", []))
+        v.questions.append(Question(f"Which supplier do you owe the {naira(total - p.paid_kobo)} balance? Type the name.",
+                                    [], text_path="contact"))
 
 
 def _check_amount(p, v, what):
     if p.amount_kobo is None:
-        v.questions.append(Question(f"How much was the {what}?", [_opt("Other amount")]))
+        v.questions.append(Question(f"How much was the {what}? Type the amount.", [], text_path="amount_kobo"))
         return False
     if p.amount_kobo <= 0:
         v.errors.append("amount_kobo must be above 0")

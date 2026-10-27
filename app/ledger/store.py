@@ -31,6 +31,7 @@ def next_avg_cost(on_hand, avg_cost, qty, unit_cost):
 class MemoryStore:
     def __init__(self, accounts):
         self.accounts = {a["code"]: a for a in accounts}
+        self.business: dict = {}
         self.products: dict[str, Product] = {}
         self.contacts: dict[str, Contact] = {}
         self.entries: dict[str, Entry] = {}
