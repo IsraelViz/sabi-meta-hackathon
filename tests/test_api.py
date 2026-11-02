@@ -154,3 +154,20 @@ def test_web_app_files_exist_and_reference_each_other():
         assert f in html or f == "icon.svg" and "icon.svg" in html
         assert (web / f).exists()
     assert (web / "sw.js").exists()
+
+
+def test_owner_gives_a_product_its_picture(setup, monkeypatch):
+    import dataclasses
+    import app.promo.publish as publish
+    store, app, client, tmp_path = setup
+    monkeypatch.setattr(publish, "settings", dataclasses.replace(
+        publish.settings, media_dir=str(tmp_path / "media"), public_base_url="https://sabi.example"))
+    assert TestClient(app).put("/api/products/p-milk/photo", content=b"x").status_code == 401
+    r = client.put("/api/products/p-milk/photo", content=b"\xff\xd8 tin", headers={"Content-Type": "image/jpeg"})
+    url = r.json()["photo"]
+    assert url.startswith("https://sabi.example/media/") and url.endswith(".jpg")
+    assert (tmp_path / "media" / url.rsplit("/", 1)[1]).read_bytes() == b"\xff\xd8 tin"
+    assert store.get_product("p-milk").photo == url
+    assert {p["id"]: p["photo"] for p in client.get("/api/products").json()}["p-milk"] == url
+    assert client.put("/api/products/p-milk/photo", content=b"x", headers={"Content-Type": "text/plain"}).status_code == 415
+    assert client.put("/api/products/nope/photo", content=b"x", headers={"Content-Type": "image/png"}).status_code == 404

@@ -221,7 +221,35 @@ def products(request: Request):
     store = _store(request)
     return [{"id": p.id, "name": p.name, "unit": p.base_unit, "price_kobo": p.sell_price_kobo,
              "avg_cost_kobo": p.avg_cost_kobo, "stock": store.stock_on_hand(p.id), "reserved": store.reserved(p.id),
-             "reorder_level": p.reorder_level} for p in store.list_products()]
+             "reorder_level": p.reorder_level, "photo": p.photo} for p in store.list_products()]
+
+
+PHOTO_TYPES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
+
+
+@router.put("/products/{product_id}/photo")
+async def product_photo(product_id: str, request: Request):
+    """Her own picture of a product: customers who send a photo of it, or ask to see it, get this one.
+    The body is the image itself (JPEG, PNG or WebP)."""
+    from app.promo.publish import LocalMedia
+
+    store = _store(request)
+    if store.get_product(product_id) is None:
+        raise HTTPException(404, "no such product")
+    ext = PHOTO_TYPES.get(request.headers.get("content-type", "").split(";")[0].strip().lower())
+    if ext is None:
+        raise HTTPException(415, "send a JPEG, PNG or WebP image")
+    data = await request.body()
+    if not data or len(data) > 8_000_000:
+        raise HTTPException(413, "the picture must be under 8 MB")
+    shop = getattr(request.state, "shop", None)
+    media = (LocalMedia(request.app.state.shops.media_root / shop.id, f"/shops-media/{shop.id}") if shop
+             else LocalMedia())
+    saved = media.save(data, ext)
+    if not saved.get("url"):
+        raise HTTPException(409, "set PUBLIC_BASE_URL so customers can be sent the picture")
+    store.set_product_photo(product_id, saved["url"])
+    return {"product_id": product_id, "photo": saved["url"]}
 
 
 @router.get("/posts")
