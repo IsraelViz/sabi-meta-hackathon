@@ -8,6 +8,7 @@ Three kinds of finding:
   unsure name match).
 Only a proposal with none of the three posts automatically.
 """
+import re
 from dataclasses import dataclass, field
 
 from app.ledger.model import EXPENSE_ACCOUNTS, PAYMENT_ACCOUNTS
@@ -15,6 +16,10 @@ from app.ledger.proposals import KINDS, Proposal
 from app.normalize.amounts import naira
 
 MATCH_THRESHOLD = 0.85
+CREDIT_ALERT_KOBO = 100_000_00   # total owed after this sale that is worth a second look
+USUALLY_LATE_DAYS = 3
+
+AMOUNT_PATH = re.compile(r"amount_kobo|paid_kobo|items\.\d+\.unit_price_kobo")
 
 
 @dataclass
@@ -62,9 +67,10 @@ def validate(p: Proposal, store, auto_post_limit_kobo) -> Verdict:
     _check_contact(p, store, v)
     {
         "sale": _check_sale, "purchase": _check_purchase, "payment_in": _check_payment,
-        "payment_out": _check_payment, "expense": _check_expense, "drawing": _check_drawing,
+        "payment_out": _check_payment, "expense": _check_expense, "drawing": _check_drawing, "saving": _check_saving,
         "stock_loss": _check_stock_loss,
     }[p.kind](p, store, v)
+    _check_funds(p, store, v)
 
     for what, score in p.match_scores.items():
         if score < MATCH_THRESHOLD:
@@ -75,12 +81,48 @@ def validate(p: Proposal, store, auto_post_limit_kobo) -> Verdict:
     return v
 
 
+ACCOUNT_NAMES = {"cash": "cash", "bank": "bank account"}
+
+
+def money_out(p):
+    """(account, kobo) this entry takes out of cash or bank, if any."""
+    if p.kind == "purchase":
+        out = p.paid_kobo
+    elif p.kind in ("payment_out", "expense", "drawing", "saving"):
+        out = p.amount_kobo
+    else:
+        return None, 0
+    return p.payment_account, out or 0
+
+
+def _check_funds(p, store, v):
+    """Books that show money paid out of an empty till are wrong somewhere: ask, never assume."""
+    account, out = money_out(p)
+    if p.overdraw_ok or account not in ACCOUNT_NAMES or out <= 0:
+        return
+    have = store.account_balance(account)
+    if out <= have:
+        return
+    other = "cash" if account == "bank" else "bank"
+    options = [_opt("Yes, record it", ("overdraw_ok", True))]
+    if store.account_balance(other) >= out:
+        options.append(_opt(f"Paid from {other}", ("payment_account", other)))
+    options.append(_opt("Cancel", ("cancel", True)))
+    v.questions.append(Question(
+        f"Your {ACCOUNT_NAMES[account]} shows only {naira(max(have, 0))}, but this pays {naira(out)} from it. "
+        f"Did it all come from the {ACCOUNT_NAMES[account]}?", options))
+
+
 def _check_unclear(p, v):
     for i, u in enumerate(p.unclear_amounts):
         cands = u.get("candidates_kobo") or []
         path = u.get("path")
         if not path or len(cands) < 2:
             v.errors.append(f"unclear_amounts[{i}] needs a 'path' and at least two candidates")
+            continue
+        if not AMOUNT_PATH.fullmatch(path) or (path.startswith("items.") and int(path.split(".")[1]) >= len(p.items)):
+            v.errors.append(f"unclear_amounts[{i}].path {path!r} must be amount_kobo, paid_kobo or "
+                            "items.N.unit_price_kobo for an item in this entry")
             continue
         v.questions.append(Question(
             f"I heard \"{u.get('text', '?')}\". Which amount did you mean?",
@@ -122,8 +164,12 @@ def _check_items(p, store, v, need_price):
 
 
 def _check_stock(store, v, i, it, prod):
+    from app.ledger.reports import tracks_stock
     available = store.stock_on_hand(prod.id) - store.reserved(prod.id)
-    if it.qty > available:
+    if it.qty > available and not tracks_stock(store, prod.id):
+        v.notes.append(f"{prod.name}: no stock recorded yet, so this sale counts at no cost. Ask her once how many "
+                       f"she has and what she paid, so profit is right.")
+    elif it.qty > available:
         v.questions.append(Question(
             f"The books show only {available} {prod.base_unit} of {prod.name}, but this is {it.qty}. "
             f"Did new stock come in that I haven't recorded?",
@@ -133,6 +179,10 @@ def _check_stock(store, v, i, it, prod):
 
 
 def _check_paid(p, v, total):
+    if p.paid_kobo is None and p.payment_account in PAYMENT_ACCOUNTS:
+        # "sold 2 rice cash": she said how she was paid and no amount, so it was paid in full.
+        p.paid_kobo = total
+        v.notes.append(f"paid in full by {'transfer' if p.payment_account == 'bank' else 'cash'}")
     if p.paid_kobo is None:
         v.questions.append(Question(
             f"Has this {naira(total)} been paid?",
@@ -173,6 +223,36 @@ def _check_sale(p, store, v):
     if p.paid_kobo is not None and p.paid_kobo < total and not _has_contact(p):
         v.questions.append(Question(f"Who owes the {naira(total - p.paid_kobo)} balance? Type the name.", [],
                                     text_path="contact"))
+    if not v.questions:
+        _check_credit(p, store, v, total)
+
+
+def _check_credit(p, store, v, total):
+    """Before giving more credit, look at how this customer has paid: she decides, with the facts in front of her."""
+    from app.ledger.reports import credit_profile
+
+    if p.credit_ok or not p.contact_id or p.paid_kobo is None or p.paid_kobo >= total:
+        return
+    c = store.get_contact(p.contact_id)
+    prof = credit_profile(store, p.contact_id)
+    new = total - p.paid_kobo
+    reasons = []
+    if prof["owes_kobo"] and prof["overdue_days"] >= 1:
+        reasons.append(f"already owes {naira(prof['owes_kobo'])}, {prof['overdue_days']} "
+                       f"day{'s' if prof['overdue_days'] > 1 else ''} late")
+    elif prof["owes_kobo"] + new > CREDIT_ALERT_KOBO:
+        reasons.append(f"would owe {naira(prof['owes_kobo'] + new)} in total")
+    if prof["avg_days_late"] is not None and prof["avg_days_late"] >= USUALLY_LATE_DAYS and prof["debts_paid"] >= 2:
+        reasons.append(f"has paid {prof['paid_late']} of the last {prof['debts_paid']} debts late "
+                       f"(about {prof['avg_days_late']:g} days)")
+    if not reasons:
+        return
+    v.questions.append(Question(
+        f"⚠️ Before you give credit: {c.name if c else 'this customer'} " + " and ".join(reasons)
+        + f". Still give {naira(new)} on credit?",
+        [_opt("Yes, give credit", ("credit_ok", True)),
+         _opt("Paid cash now", ("paid_kobo", total), ("payment_account", "cash")),
+         _opt("Cancel", ("cancel", True))]))
 
 
 def _check_purchase(p, store, v):
@@ -234,6 +314,11 @@ def _check_expense(p, store, v):
 def _check_drawing(p, store, v):
     if _check_amount(p, v, "money you took"):
         _check_account(p, v, "money you took")
+
+
+def _check_saving(p, store, v):
+    if _check_amount(p, v, "money you saved"):
+        _check_account(p, v, "money you saved")
 
 
 def _check_stock_loss(p, store, v):

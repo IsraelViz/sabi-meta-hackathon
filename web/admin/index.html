@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Sabi pilot admin</title>
+  <link rel="icon" href="/app/icon.svg" type="image/svg+xml">
+  <style>
+    :root { --bg: #FFF8EB; --card: #fff; --ink: #21180F; --muted: #7A6A58; --line: #EADFCC; --accent: #E85D04; --chip: #F6EBD8; --bad: #C62828; --good: #2E7D32; color-scheme: light; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #17120D; --card: #221A13; --ink: #F5EBDD; --muted: #B3A28E; --line: #3A2E22; --accent: #FF7A26; --chip: #2E241A; --bad: #FF8A80; --good: #7BC67E; color-scheme: dark; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+    h1 { font-size: 22px; margin: 4px 0 16px; } h2 { font-size: 16px; margin: 24px 0 8px; }
+    .card { background: var(--card); border-radius: 14px; padding: 14px; border: 1px solid var(--line); }
+    input, select { font: inherit; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+    button { font: inherit; padding: 9px 14px; border-radius: 10px; border: 0; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; }
+    button.ghost { background: var(--chip); color: var(--ink); }
+    form.new { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    form.new input[name=name] { flex: 1 1 200px; }
+    .table { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; font-size: 14px; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .bad { color: var(--bad); } .muted { color: var(--muted); }
+    .links { background: var(--chip); border-radius: 10px; padding: 12px; margin-top: 12px; overflow-wrap: anywhere; }
+    .links div { margin: 6px 0; }
+    .chat { display: grid; gap: 6px; }
+    .chathead { margin: 14px 0 4px; font-weight: 700; }
+    .m { max-width: 80%; padding: 6px 10px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); white-space: pre-wrap; overflow-wrap: anywhere; }
+    .m.in { justify-self: end; background: var(--chip); }
+    .m .meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .m img { max-width: 220px; display: block; border-radius: 8px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Sabi pilot</h1>
+  <div id="login" class="card" hidden>
+    <p>Admin key (ADMIN_TOKEN, or OWNER_APP_TOKEN if that isn't set):</p>
+    <input id="key" type="password" style="width:100%"> <p><button id="go">Open</button></p>
+  </div>
+  <div id="app" hidden>
+    <div class="card">
+      <form class="new" id="new">
+        <input name="name" placeholder="Shop name, e.g. Ada's Books" required maxlength="60">
+        <input name="owner_name" placeholder="Owner's first name" maxlength="60">
+        <select name="kind"><option value="shop">Shop</option><option value="online">Online seller</option><option value="books">Bookseller</option></select>
+        <button>Create shop</button>
+      </form>
+      <div id="made"></div>
+    </div>
+    <h2>Shops <button class="ghost" id="reload" style="padding:4px 10px;font-size:13px">↻</button></h2>
+    <div class="card table"><table id="shops"></table></div>
+    <h2>Feedback <a href="/results" target="_blank" style="font-size:13px;font-weight:400">public results page ↗</a></h2>
+    <div class="card" id="feedback"></div>
+    <h2 id="t-title" hidden></h2>
+    <div class="card" id="transcript" hidden></div>
+  </div>
+</main>
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const KEY = "sabi.admin";
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const when = iso => iso ? new Date(iso).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" }) : "—";
+
+async function api(path, body) {
+  const res = await fetch(path, { method: body ? "POST" : "GET", headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem(KEY) || ""}` },
+    body: body ? JSON.stringify(body) : undefined });
+  if (res.status === 401) { $("#login").hidden = false; $("#app").hidden = true; throw new Error("auth"); }
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+function linksHtml(name, owner, d) {
+  const hi = owner ? `Hi ${owner}! ` : "";
+  const msg = `${hi}This is your Sabi link for ${name}. Open it on your phone, then add it to your home screen: ${d.join_url}`;
+  return `<div class="links">
+    ${d.join_url ? `<div><b>Her app link</b> (private, it is her key; send only to her):<br><a href="${esc(d.join_url)}" target="_blank">${esc(d.join_url)}</a>
+      <br><button class="ghost" data-copy="${esc(d.join_url)}">Copy</button>
+      <a href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank"><button class="ghost" type="button">Send on WhatsApp</button></a></div>` : ""}
+    <div><b>Customer chat link</b> (public): <a href="${esc(d.chat_url)}" target="_blank">${esc(d.chat_url)}</a></div></div>`;
+}
+
+async function load() {
+  const shops = await api("/admin/api/shops");
+  $("#login").hidden = true; $("#app").hidden = false;
+  $("#shops").innerHTML = `<tr><th>Shop</th><th>Kind</th><th>Joined</th><th>Owner msgs</th><th>Customer msgs</th><th>Customers</th>
+    <th>Entries</th><th>Products</th><th>Avg reply</th><th>Errors</th><th>Feedback</th><th>Last active</th><th></th></tr>` +
+    (shops.map(s => `<tr><td><b>${esc(s.name)}</b><br><span class="muted">${esc(s.owner_name || "")}</span></td><td>${esc(s.kind)}</td>
+      <td>${s.consent_at ? "✓ " + when(s.consent_at) : '<span class="muted">not yet</span>'}</td>
+      <td class="num">${s.owner_in}</td><td class="num">${s.customer_in}</td><td class="num">${s.customers}</td>
+      <td class="num">${s.entries}</td><td class="num">${s.products}</td><td class="num">${s.avg_latency_ms ? (s.avg_latency_ms / 1000).toFixed(1) + "s" : "—"}</td>
+      <td class="num ${s.errors ? "bad" : ""}">${s.errors}</td><td class="num">${s.feedback}</td><td>${when(s.last_active)}</td>
+      <td><button class="ghost" data-t="${s.id}" data-n="${esc(s.name)}">Chats</button>
+        <button class="ghost" data-k="${s.id}" data-n="${esc(s.name)}" data-o="${esc(s.owner_name || "")}">New key</button>
+        <a href="${esc(s.chat_url)}" target="_blank">link</a></td></tr>`).join("") || `<tr><td colspan="13" class="muted">No shops yet. Create one above.</td></tr>`);
+  const fb = await api("/admin/api/feedback");
+  $("#feedback").innerHTML = fb.map(f => `<div style="margin:8px 0"><b>${esc(f.shop)}</b> <span class="muted">${when(f.created_at)}${f.message_id ? ` · about message #${f.message_id}` : ""}</span>
+    ${f.rating === -1 ? "👎" : ""}<br>${esc(f.note) || '<span class="muted">(no words)</span>'}
+    ${f.note ? `<br><label class="muted" style="font-size:13px"><input type="checkbox" data-pub="${f.id}" ${f.public ? "checked" : ""}> Show on the public results page (ask her first)</label>` : ""}</div>`).join("") || `<span class="muted">None yet.</span>`;
+}
+
+async function transcript(id, name) {
+  const rows = await api(`/admin/api/shops/${id}/transcript`);
+  const chats = {};
+  for (const r of rows) (chats[r.chat] ||= []).push(r);
+  $("#t-title").hidden = $("#transcript").hidden = false;
+  $("#t-title").textContent = `Chats: ${name}`;
+  $("#transcript").innerHTML = Object.entries(chats).map(([chat, list]) => `
+    <div class="chathead">${chat === "owner" ? "Owner ↔ Sabi" : `Customer: ${esc(list.find(r => r.sender_name)?.sender_name || chat)}`}</div>
+    <div class="chat">${list.map(r => `<div class="m ${r.role}">${r.image ? `<img src="${esc(r.image)}" alt="">` : ""}${esc(r.body)}
+      ${r.buttons?.length ? `<div class="meta">[${r.buttons.map(b => esc(b.title)).join(" | ")}]</div>` : ""}
+      <div class="meta">#${r.id} · ${when(r.created_at)}${r.tools?.length ? ` · ${esc(r.tools.join(" → "))}` : ""}${r.latency_ms ? ` · ${(r.latency_ms / 1000).toFixed(1)}s` : ""}${r.error ? ` · <span class="bad">${esc(r.error)}</span>` : ""}</div></div>`).join("")}</div>`).join("")
+    || `<span class="muted">No messages yet.</span>`;
+  $("#t-title").scrollIntoView({ behavior: "smooth" });
+}
+
+$("#go").onclick = () => { localStorage.setItem(KEY, $("#key").value.trim()); load().catch(() => {}); };
+$("#reload").onclick = () => load().catch(() => {});
+$("#new").onsubmit = async e => {
+  e.preventDefault();
+  const f = Object.fromEntries(new FormData(e.target));
+  try {
+    const d = await api("/admin/api/shops", f);
+    $("#made").innerHTML = `<p><b>${esc(d.shop.name)}</b> created.</p>${linksHtml(d.shop.name, f.owner_name, d)}`;
+    e.target.reset();
+    load();
+  } catch (err) { if (err.message !== "auth") $("#made").innerHTML = `<p class="bad">${esc(err.message)}</p>`; }
+};
+document.addEventListener("change", async e => {
+  const pub = e.target.closest("[data-pub]");
+  if (pub) await api(`/admin/api/feedback/${pub.dataset.pub}/public`, { public: pub.checked }).catch(() => { pub.checked = !pub.checked; });
+});
+document.addEventListener("click", async e => {
+  const c = e.target.closest("[data-copy]");
+  if (c) { navigator.clipboard.writeText(c.dataset.copy); c.textContent = "Copied ✓"; return; }
+  const t = e.target.closest("[data-t]");
+  if (t) return transcript(t.dataset.t, t.dataset.n);
+  const k = e.target.closest("[data-k]");
+  if (k && confirm(`Make a new app key for ${k.dataset.n}? Her old link stops working.`)) {
+    const d = await api(`/admin/api/shops/${k.dataset.k}/key`, {});
+    $("#made").innerHTML = `<p>New key for <b>${esc(k.dataset.n)}</b>.</p>${linksHtml(k.dataset.n, k.dataset.o, d)}`;
+    window.scrollTo(0, 0);
+  }
+});
+load().catch(() => {});
+setInterval(() => load().catch(() => {}), 30000);
+</script>
+</body>
+</html>

@@ -1,4 +1,8 @@
-"""Read-only API for the owner app.
+"""API for the owner app: read the books, and set up what Sabi tells customers.
+
+The books are read-only here: every entry goes through the agent and its checks.
+The only writes are the shop's profile (shop info, links, payment details), which
+the owner edits herself.
 
 Every route needs the owner's token (OWNER_APP_TOKEN) as a Bearer header.
 With no token configured, only requests from this machine are allowed, for
@@ -11,25 +15,29 @@ from datetime import date
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
+from pydantic import BaseModel, Field
 
+from app import money
 from app.ledger import reports
+from app.ledger.reports import headline_kobo
 
 LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost", "testclient"}
-HEADLINE_ACCOUNTS = {          # the one number a trader cares about, per kind of entry
-    "sale": ("sales", "credit"), "purchase": ("inventory", "debit"), "payment_in": ("ar", "credit"),
-    "payment_out": ("ap", "debit"), "drawing": ("drawings", "debit"), "stock_loss": ("stock_loss", "debit"),
-    "opening": ("inventory", "debit"),
-}
-
-
 def require_owner(request: Request):
+    given = request.headers.get("authorization", "").removeprefix("Bearer ").strip()
+    shops = getattr(request.app.state, "shops", None)
+    if shops is not None and given:
+        shop = shops.by_token(given)   # a pilot shop's own key: every route then reads her books
+        if shop is not None:
+            request.state.shop = shop
+            return
     token = request.app.state.owner_token
     if not token:
-        if request.client and request.client.host in LOCAL_HOSTS:
+        # A tunnel or proxy also connects from 127.0.0.1, but says who it is forwarding for.
+        forwarded = any(h in request.headers for h in ("x-forwarded-for", "cf-connecting-ip", "forwarded"))
+        if request.client and request.client.host in LOCAL_HOSTS and not forwarded:
             return
         raise HTTPException(401, "set OWNER_APP_TOKEN to use the app from another device")
-    given = request.headers.get("authorization", "").removeprefix("Bearer ").strip()
     if not hmac.compare_digest(given.encode(), token.encode()):
         raise HTTPException(401, "wrong or missing token")
 
@@ -38,7 +46,10 @@ router = APIRouter(prefix="/api", dependencies=[Depends(require_owner)])
 
 
 def _store(request: Request):
-    return request.app.state.store
+    shop = getattr(request.state, "shop", None)
+    store = shop.store if shop else request.app.state.store
+    money.use(store)
+    return store
 
 
 ITEM_ACCOUNT = {"sale": "sales", "purchase": "inventory", "stock_loss": "stock_loss", "opening": "inventory"}
@@ -49,15 +60,6 @@ def _shown(entry, store):
     if entry.kind == "reversal" and entry.reverses_id:
         return store.get_entry(entry.reverses_id) or entry
     return entry
-
-
-def headline_kobo(entry):
-    if entry.kind == "expense":
-        return sum(l.debit_kobo for l in entry.lines if l.account not in ("cash", "bank"))
-    account, side = HEADLINE_ACCOUNTS.get(entry.kind, (None, None))
-    if account:
-        return sum(getattr(l, f"{side}_kobo") for l in entry.lines if l.account == account)
-    return entry.total_debits
 
 
 def _names(store):
@@ -99,6 +101,7 @@ def summary(request: Request):
         "debtors": debt[:5],
         "low_stock": reports.low_stock(store),
         "pending_questions": len(store.pending_approvals()),
+        "sales": {k: v for k, v in reports.sales_pipeline(store).items() if k != "leads"},
         "recent": [_entry_summary(e, names, store, rev.get(e.id)) for e in reversed(entries[-6:])],
     }
 
@@ -139,7 +142,9 @@ def entry_detail(entry_id: str, request: Request):
     products, contacts, accounts = names
     rev = _reversals(store.list_entries())
     ev = store.get_evidence(e.evidence_id) if e.evidence_id else None
+    from app.ledger.explain import explain
     return {
+        "why": explain(store, e),
         **_entry_summary(e, names, store, rev.get(e.id)),
         "lines": [{"account": l.account, "account_name": accounts.get(l.account, l.account),
                    "debit_kobo": l.debit_kobo, "credit_kobo": l.credit_kobo, "qty": l.qty,
@@ -205,6 +210,12 @@ def debtor_statement(contact_id: str, request: Request):
     return {"contact": {"id": c.id, "name": c.name, "phone": c.phone}, "owes_kobo": balance, "rows": rows}
 
 
+@router.get("/sales")
+def sales_pipeline(request: Request, days: int = 1):
+    """Customer chats by stage: asking, ordered, paid, lost; who is waiting for her; what they wanted that we lack."""
+    return reports.sales_pipeline(_store(request), days=max(1, min(days, 31)))
+
+
 @router.get("/products")
 def products(request: Request):
     store = _store(request)
@@ -238,6 +249,136 @@ def runs(request: Request, limit: int = 20):
     return _store(request).recent_runs(limit)
 
 
+# --- the shop's profile: what Sabi tells customers ------------------------------------
+
+class Links(BaseModel):
+    website: str | None = Field(default=None, max_length=300)
+    instagram: str | None = Field(default=None, max_length=300)
+    facebook: str | None = Field(default=None, max_length=300)
+    whatsapp: str | None = Field(default=None, max_length=300)
+
+
+class Profile(BaseModel):
+    shop_info: str | None = Field(default=None, max_length=6000)
+    payment_details: str | None = Field(default=None, max_length=500)
+    links: Links | None = None
+    docs: list[dict] | None = Field(default=None, max_length=12)   # pages from /learn, kept for shop_details
+
+
+def _profile(store):
+    b = getattr(store, "business", {})
+    return {"name": b.get("name"), "shop_info": b.get("shop_info", ""), "payment_details": b.get("payment_details", ""),
+            "links": b.get("links") or {}, "updated_at": b.get("profile_updated_at"),
+            "sources": [{"source": d["source"], "url": d["url"], "title": d["title"]} for d in b.get("knowledge") or []]}
+
+
+@router.get("/business")
+def business(request: Request):
+    return _profile(_store(request))
+
+
+@router.put("/business")
+def save_business(p: Profile, request: Request):
+    from app.agent import knowledge
+    store = _store(request)
+    if p.payment_details is not None:
+        store.business = {**store.business, "payment_details": p.payment_details.strip()}
+    links = {k: v.strip() for k, v in p.links.model_dump().items() if v and v.strip()} if p.links else None
+    docs = [knowledge.Doc(**{k: str(d.get(k, ""))[:knowledge.DOC_CHARS] for k in ("source", "url", "title", "text")}).__dict__
+            for d in p.docs] if p.docs is not None else None
+    knowledge.save(store, p.shop_info if p.shop_info is not None else store.business.get("shop_info", ""), links, docs)
+    return _profile(store)
+
+
+@router.post("/business/learn")
+def learn_business(links: Links, request: Request):
+    """Read the shop's pages and draft the shop info. Nothing is saved until she saves it."""
+    from dataclasses import asdict
+
+    from app.agent import knowledge
+    llm = getattr(request.app.state, "llm", None)
+    if llm is None:
+        raise HTTPException(503, "the AI model isn't connected")
+    store = _store(request)
+    given = {k: v for k, v in links.model_dump().items() if v}
+    all_links = knowledge._links(store, given)
+    docs, status = knowledge.read_all(all_links)
+    if not docs:
+        return {"shop_info": None, "status": status, "docs": [], "links": all_links, "products_seen": [], "missing": []}
+    draft = knowledge.summarise(llm, docs, store.business.get("shop_info", ""))
+    return {**draft, "status": status, "links": all_links, "docs": [asdict(d) for d in docs]}
+
+
+# --- business statement ---------------------------------------------------------------
+
+@router.get("/statement", response_class=HTMLResponse)
+def statement_page(request: Request, days: int = 90):
+    from app.ledger.statement import page
+    return HTMLResponse(page(_store(request), days=max(7, min(days, 366))),
+                        headers={"Cache-Control": "private, no-store"})
+
+
+@router.post("/statement/link")
+def statement_link(request: Request):
+    """A link she can send to a lender: signed, expires in 7 days."""
+    from app.ledger.statement import LINK_DAYS, make_token
+    from app.config import settings
+    base = settings.public_base_url or str(request.base_url).rstrip("/")
+    shop = getattr(request.state, "shop", None)
+    return {"url": f"{base}/s/{make_token(shop=shop.id if shop else '')}", "days": LINK_DAYS}
+
+
 @router.get("/me")
 def me(request: Request):
-    return {"ok": True, "shop": getattr(_store(request), "business", {}).get("name"), "today": date.today()}
+    from app import prefs
+    from app.agent import language
+    shop = getattr(request.state, "shop", None)
+    store = _store(request)
+    return {"ok": True, "shop": getattr(store, "business", {}).get("name"), "today": date.today(),
+            "chat": shop is not None, "kind": shop.kind if shop else None,
+            "low_data": prefs.get(store)["low_data"], "push": shop is not None,
+            "language": language.for_owner(store), "currency": _currency(store)}
+
+
+def _currency(store):
+    """How the app writes her money: ₦12,500 or 12 500 F CFA."""
+    c = money.of(store)
+    return {"code": c.code, "symbol": c.symbol, "after": c.after, "group": c.group, "cents": c.cents}
+
+
+# --- her settings, her score, her coach ----------------------------------------------------
+
+@router.get("/prefs")
+def get_prefs(request: Request):
+    from datetime import datetime
+
+    from app import prefs
+    from app.agent.language import CHOICES
+    from app.ledger.reports import LAGOS
+    p = prefs.get(_store(request))
+    nxt = prefs.next_summary(p, datetime.now(LAGOS))
+    return {**prefs.public(p), "summary_text": prefs.describe_summary(p), "next_summary": nxt,
+            "weekdays": prefs.WEEKDAYS, "tones": prefs.TONES, "languages": CHOICES,
+            "currencies": [{"code": c.code, "label": c.label} for c in money.CURRENCIES.values()]}
+
+
+@router.put("/prefs")
+def put_prefs(changes: dict, request: Request):
+    from app import prefs
+    allowed = {k: v for k, v in changes.items() if not str(k).startswith("_")}
+    _, errors = prefs.save(_store(request), allowed)
+    if errors:
+        raise HTTPException(422, "; ".join(errors))
+    return get_prefs(request)
+
+
+@router.get("/score")
+def score(request: Request):
+    from app.ledger.score import sabi_score
+    return sabi_score(_store(request))
+
+
+@router.get("/coach")
+def coach_tips(request: Request):
+    from app.ledger import coach
+    return {"tips": coach.tips(_store(request), limit=5)}

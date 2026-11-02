@@ -8,6 +8,8 @@ import mimetypes
 import secrets
 from pathlib import Path
 
+from app.media import durable
+
 EXTENSIONS = {"audio/ogg": ".ogg", "audio/mpeg": ".mp3", "audio/mp4": ".m4a", "audio/aac": ".aac",
               "audio/amr": ".amr", "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 
@@ -22,4 +24,5 @@ class PrivateMedia:
         ext = EXTENSIONS.get(base) or mimetypes.guess_extension(base) or ".bin"
         name = f"{secrets.token_hex(12)}{ext}"
         (self.dir / name).write_bytes(data)
+        durable.keep(self.dir / name, data)
         return f"private:{name}"

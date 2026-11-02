@@ -18,6 +18,7 @@ class Product:
     avg_cost_kobo: int = 0
     reorder_level: int = 0
     countable: bool = True
+    photo: str | None = None    # the shop's own picture of it, sent to customers who ask
 
     @property
     def price_floor(self):

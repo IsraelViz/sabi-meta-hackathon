@@ -14,6 +14,7 @@ per-session message cap, and a daily cap across all visitors.
 """
 import asyncio
 import base64
+import logging
 import secrets
 import shutil
 import tempfile
@@ -21,24 +22,28 @@ import threading
 import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel, Field
 
+from app import money
 from app.agent.orchestrator import Agent
 from app.config import settings
 from app.jobs.daily_summary import summary_message
 from app.ledger import reports
+from app.ledger.reports import headline_kobo
 from app.ledger.demo_week import add_history
 from app.ledger.seed import demo_store
+from app.ledger.store import now
 from app.promo.publish import LocalMedia
 
 OWNER = "demo-owner"
 CUSTOMER = "demo-customer"          # Mama Tunde's "phone" in the demo
 CUSTOMER_CONTACT = "c-tunde"
+log = logging.getLogger(__name__)
 
 
 class DemoPublisher:
@@ -86,7 +91,8 @@ class DemoRegistry:
             base = self.promo_factory(media_dir, sid) if self.promo_factory else default_services()
             promo = PromoServices(base.cutter, base.backgrounds, LocalMedia(media_dir, f"/demo/api/{sid}"),
                                   DemoPublisher())
-            agent = Agent(store, self.llm, OWNER, settings.auto_post_limit_kobo, counter=self.counter, promo=promo)
+            agent = Agent(store, self.llm, OWNER, settings.auto_post_limit_kobo, counter=self.counter, promo=promo,
+                          statement_link=lambda: f"/demo/api/{sid}/statement")
             self.sessions[sid] = Session(sid, agent, media_dir)
             return self.sessions[sid]
 
@@ -146,7 +152,7 @@ def _books(store):
         "stock": [{"name": p.name, "qty": store.stock_on_hand(p.id), "unit": p.base_unit}
                   for p in store.list_products()],
         "recent": [{"kind": e.kind, "memo": e.memo, "status": e.status, "seq": e.seq,
-                    "total_kobo": e.total_debits}
+                    "total_kobo": headline_kobo(e)}
                    for e in reversed(store.list_entries()[-6:]) if e.kind != "opening"],
         "posts": [{"status": p["status"], "caption": p["caption"]} for p in store.list_posts()[:2]],
     }
@@ -160,13 +166,19 @@ def make_router(registry_ref):
     def new_session():
         s = registry_ref().create()
         shop = s.agent.store.business.get("name", "Demo shop")
-        return {"id": s.id, "shop": shop, "model": getattr(s.agent.llm, "model", None),
+        voice = settings.can_transcribe()
+        return {"id": s.id, "shop": shop, "model": getattr(s.agent.llm, "model", None), "voice": voice,
                 "max_messages": registry_ref().max_messages, "books": _books(s.agent.store),
                 "intro": [
-                    {"to": "owner", "body": f"Welcome to {shop}'s books 👋 You are the owner. Try a voice note "
-                                            "or type: \"I sell 2 carton Indomie give Chioma, she go pay Friday\""},
+                    {"to": "owner", "body": f"Welcome to {shop}'s books 👋 You are the owner. "
+                                            f"{'Try a voice note or type' if voice else 'Type'}: "
+                                            "\"I sell 2 carton Indomie give Chioma, she go pay Friday\". "
+                                            "Then try \"I wan apply for loan\", \"wetin I suppose buy?\", "
+                                            "or send a photo of a price list."},
                     {"to": "customer", "body": "You are Mama Tunde, a regular customer. Try: "
-                                               "\"How much for Peak milk? I want 6 tins\""}]}
+                                               "\"How much for Peak milk? I want 6 tins\", "
+                                               "\"You go do discount if I buy 10 carton?\" "
+                                               "or \"Una dey deliver to Yaba?\""}]}
 
     @router.post("/{sid}/message")
     async def message(sid: str, m: DemoMessage):
@@ -177,11 +189,14 @@ def make_router(registry_ref):
         kwargs = dict(sender=sender, channel="demo", profile_name="Mama Tunde" if m.who == "customer" else None)
         heard = None
         if m.audio:
-            from app.media.transcribe import transcribe
+            from app.media.transcribe import shop_words, transcribe
+            if not settings.can_transcribe():
+                raise HTTPException(503, "Voice notes aren't switched on in this demo yet. Please type it.")
             try:
-                heard = await transcribe(base64.b64decode(m.audio.split(",", 1)[1]))
-            except Exception as e:
-                raise HTTPException(502, f"Couldn't transcribe the voice note: {e}")
+                heard = await transcribe(base64.b64decode(m.audio.split(",", 1)[1]), keywords=shop_words(s.agent.store))
+            except Exception:
+                log.exception("demo transcription failed")
+                raise HTTPException(502, "Couldn't transcribe that voice note. Please try again or type it.")
             if not heard:
                 raise HTTPException(422, "I couldn't hear that voice note. Try again or type it.")
             kwargs.update(text=heard, transcript_of="voice_note")
@@ -208,6 +223,27 @@ def make_router(registry_ref):
         msg = summary_message(s.agent.store)
         return {"messages": [{"to": "owner", "body": msg["body"], "buttons": msg["buttons"], "image": None}],
                 "books": _books(s.agent.store)}
+
+    @router.post("/{sid}/later")
+    def three_hours_later(sid: str):
+        """Skip ahead 3 hours: customers who went quiet get Sabi's one follow-up."""
+        from app.agent.sales import followups_due
+        s = registry_ref().get(sid)
+        due = followups_due(s.agent.store, at=now() + timedelta(hours=3, minutes=1))
+        messages = [{"to": "customer", "body": text, "buttons": [], "image": None} for _, text in due]
+        if not messages:
+            messages = [{"to": "owner", "body": "⏩ 3 hours later. No customer needs a follow-up yet: one goes out "
+                                                "when someone asked or ordered and then went quiet.",
+                         "buttons": [], "image": None}]
+        return {"messages": messages, "books": _books(s.agent.store)}
+
+    @router.get("/{sid}/statement", response_class=HTMLResponse)
+    def statement(sid: str):
+        """The demo shop's business statement, as a lender would see it."""
+        from app.ledger.statement import render
+        store = registry_ref().get(sid).agent.store
+        money.use(store)
+        return HTMLResponse(render(reports.business_statement(store)))
 
     @router.get("/{sid}/books")
     def books(sid: str):

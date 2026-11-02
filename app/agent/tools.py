@@ -6,11 +6,14 @@ cannot read the ledger or anyone else's data, whatever the DM says.
 import json
 from datetime import date
 
-from app.agent import orders, reminders, stocktake
+from app import money
+from app.money import CURRENCIES
+from app import prefs as shop_prefs
+from app.agent import knowledge, onboarding, orders, payments, product_photos, reminders, sales, stocktake
 from app.agent.approvals import CANCEL, CONFIRM, buttons_for, describe, submit
 from app.ledger import reports
 from app.ledger.proposals import KINDS, Item, Proposal
-from app.ledger.validator import validate
+from app.ledger.validator import money_out, validate
 from app.media import documents
 from app.promo import flow as promo_flow
 from app.normalize.amounts import naira
@@ -89,11 +92,82 @@ RECENT = _fn("recent_entries", "The latest ledger entries, newest first, to find
 REVERSE = _fn("cancel_entry", "Cancel a wrong entry with a reversing entry. The owner confirms first.",
               {"entry_id": {"type": "string"}, "reason": {"type": "string"}}, ["entry_id", "reason"])
 REPORT = _fn("report", "Books report.", {
-    "kind": {"type": "string", "enum": ["pnl", "cash", "debtors", "low_stock"]},
+    "kind": {"type": "string", "enum": ["pnl", "cash", "debtors", "low_stock", "sales", "restock", "coach", "savings"],
+             "description": "sales = today's customer chats: who asked, ordered, paid, and what they wanted that we lack. "
+                            "restock = what will run out soon at her selling pace, and how many to order. "
+                            "coach = tips from her numbers: prices that lose money or have thin margins, costs that went up, "
+                            "slow stock, best seller. savings = what she has put aside and her goal"},
     "period": {"type": "string", "enum": ["today", "week", "month", "all"]}}, ["kind"])
 ASK = _fn("ask_owner", "Ask the owner a question with up to 3 short button options.", {
     "question": {"type": "string"},
     "options": {"type": "array", "items": {"type": "string"}, "maxItems": 3}}, ["question"])
+
+SETUP_PHOTO = _fn("setup_from_photo",
+                  "The photo is her price list, product list or stock notebook (not a receipt of a sale or purchase): "
+                  "add the products, prices and opening stock to the books. She approves the list first.", {})
+ADD_PRODUCTS = _fn(
+    "add_products",
+    "Add products she sells that aren't in her list yet (find_product found nothing), with their selling prices. "
+    "She approves the list first. Only give qty_in_stock and cost_naira for stock she ALREADY HAD before today; "
+    "stock she just bought is a purchase: record it with record_entry after the product is added.",
+    {"products": {"type": "array", "items": {"type": "object", "properties": {
+        "name": {"type": "string"},
+        "unit": {"type": "string", "description": "what one is: piece, copy, bag, carton, pack, yard..."},
+        "price_naira": {"type": "number", "description": "her selling price for one unit"},
+        "qty_in_stock": {"type": ["integer", "null"]},
+        "cost_naira": {"type": ["number", "null"], "description": "what she paid for one, if said"}},
+        "required": ["name", "price_naira"]}}}, ["products"])
+STATEMENT = _fn("business_statement",
+                "Her business statement for a loan, microfinance or supplier credit: sales, profit, stock, cash, "
+                "credit collected, month by month, with a link to the printable page she can share.", {})
+LEARN = _fn("learn_business",
+            "Read the shop's own website, Instagram, Facebook and WhatsApp profile and draft the shop info that "
+            "customers are told (hours, location, delivery, payment...). She approves it before it is used. "
+            "Pass any link she just gave; links given before are remembered.", {
+                "website": {"type": ["string", "null"]}, "instagram": {"type": ["string", "null"], "description": "handle or URL"},
+                "facebook": {"type": ["string", "null"], "description": "page name or URL"},
+                "whatsapp": {"type": ["string", "null"]}})
+SHOP_INFO = _fn("update_shop_info",
+                "She told you a fact about the shop for customers (hours, address, delivery fees, payment, returns, "
+                "bulk terms). Drafts the updated shop info for her to approve.",
+                {"change": {"type": "string", "description": "the change in her words"}}, ["change"])
+
+SET_PREFS = _fn(
+    "set_preferences",
+    "Change her settings when she asks: when her summary comes (every day, once a week, or off; the hour; the day), "
+    "the language of her messages and summaries, the money her books are kept in, how payment reminders sound, how much of her profit to put aside and her savings goal, low-data mode, "
+    "and whether her Sabi Score shows on her statement or her supplier prices are shared (anonymously) with other shops. "
+    "Only pass what she asked to change.",
+    {"summary_frequency": {"type": ["string", "null"], "enum": ["daily", "weekly", "off", None]},
+     "summary_hour": {"type": ["integer", "null"], "description": "24-hour clock, 5 to 23. 7 am = 7, 8 pm = 20"},
+     "summary_weekday": {"type": ["string", "null"], "enum": [*shop_prefs.WEEKDAYS, None]},
+     "reminder_tone": {"type": ["string", "null"], "enum": [*shop_prefs.TONES, None]},
+     "language": {"type": ["string", "null"],
+                  "description": "the language she wants Sabi's messages and summaries in, in English: 'French', "
+                                 "'Swahili', 'Pidgin'... or 'auto' to follow whatever she writes"},
+     "currency": {"type": ["string", "null"], "enum": [*CURRENCIES, None],
+                  "description": "the money her books are kept in: NGN naira, XOF F CFA (West Africa), XAF F CFA "
+                                 "(Central Africa), GHS cedi, KES/TZS/UGX shilling, ZAR rand. Amounts already "
+                                 "recorded are not converted, so only change it when she says so"},
+     "savings_percent": {"type": ["number", "null"], "description": "share of each day's profit to put aside, 0-50"},
+     "savings_goal_naira": {"type": ["number", "null"]},
+     "savings_name": {"type": ["string", "null"], "description": "e.g. 'Ajo', 'school fees', 'new freezer'"},
+     "low_data": {"type": ["boolean", "null"]},
+     "share_score": {"type": ["boolean", "null"]},
+     "share_prices": {"type": ["boolean", "null"]}})
+CHECK_PAYMENT = _fn(
+    "check_payment",
+    "She forwarded a bank alert SMS or a transfer screenshot, or asks if a payment is real. Code checks it for signs "
+    "of a fake (pending, old date, wrong account, sender's receipt instead of her bank's alert) and matches it to "
+    "open orders and debts, then tells her. Pass the alert text if it was typed or pasted.",
+    {"text": {"type": ["string", "null"]}})
+SCORE = _fn("sabi_score",
+            "Her Sabi Score out of 100: how ready her records are to back a loan, with each part, what it measured "
+            "and the one thing that would raise it most.", {})
+MARKET = _fn("market_prices",
+             "What other Sabi shops paid suppliers for this product recently (anonymous: lowest, middle, highest), "
+             "and how many are restocking it now (a chance to buy together).",
+             {"product_id": {"type": "string"}}, ["product_id"])
 
 CUST_PRODUCT = _fn("find_product", "Look up products the shop sells. Returns price and whether it is in stock.",
                    {"query": {"type": "string"}}, ["query"])
@@ -106,10 +180,32 @@ PAYMENT_CLAIM = _fn("record_payment_claim",
                         "order_id": {"type": "string"}, "amount_naira": {"type": ["number", "null"]},
                         "reference": {"type": ["string", "null"]}}, ["order_id"])
 MY_ORDERS = _fn("my_open_orders", "This customer's open orders.", {})
+SHOP_DETAILS = _fn("shop_details",
+                   "Search the shop's own website and social pages for a detail the shop info above doesn't cover.",
+                   {"question": {"type": "string"}}, ["question"])
+HAND_TO_OWNER = _fn("hand_to_owner",
+                    "Pass this chat to the shop owner: discounts or price haggling, bulk or wholesale buying, "
+                    "complaints, anything not in the shop info, or when they ask for a person.", {
+                        "reason": {"type": "string", "description": "a few words, e.g. 'wants a discount on 10 cartons'"},
+                        "summary": {"type": "string", "description": "one or two lines: what they want so far"}},
+                    ["reason", "summary"])
 
-OWNER_TOOLS = [FIND_PRODUCT, FIND_CONTACT, RECORD, READ_DOC, BATCH, STOCK_TAKE, PROMO_IDEAS, MAKE_PROMO,
-               SEND_REMINDER, SET_PHONE, RECENT, REVERSE, REPORT, ASK]
-CUSTOMER_TOOLS = [CUST_PRODUCT, CREATE_ORDER, PAYMENT_CLAIM, MY_ORDERS]
+SAVE_PHOTO = _fn("save_product_photo",
+                  "She sent a photo of ONE of her products to be its picture ('this is my Peak milk', 'use this "
+                  "picture for rice'). Customers who send a picture of it, or ask to see it, get this photo back.",
+                  {"product_id": {"type": "string"}}, ["product_id"])
+MATCH_PHOTO = _fn("match_photo",
+                  "The customer sent a photo of something they want. Finds which of the shop's products it is, "
+                  "whether it is in stock, and similar products that are in stock. Call it before answering about "
+                  "their photo. Notes what we couldn't offer for the owner.", {})
+SEND_PHOTO = _fn("send_product_photo",
+                 "Send the customer the shop's own picture of a product with its price: after a photo matched, "
+                 "when offering something similar, or when they ask to see it. Only for has_photo products.",
+                 {"product_id": {"type": "string"}}, ["product_id"])
+
+OWNER_TOOLS = [FIND_PRODUCT, FIND_CONTACT, RECORD, READ_DOC, BATCH, STOCK_TAKE, PROMO_IDEAS, MAKE_PROMO, LEARN, SHOP_INFO, STATEMENT, SETUP_PHOTO, ADD_PRODUCTS,
+               SEND_REMINDER, SET_PHONE, RECENT, REVERSE, REPORT, ASK, SET_PREFS, CHECK_PAYMENT, SCORE, MARKET, SAVE_PHOTO]
+CUSTOMER_TOOLS = [CUST_PRODUCT, MATCH_PHOTO, SEND_PHOTO, CREATE_ORDER, PAYMENT_CLAIM, MY_ORDERS, SHOP_DETAILS, HAND_TO_OWNER]
 
 
 def _kobo(naira_value):
@@ -128,7 +224,8 @@ def find_product(ctx, query, customer=False):
         available = ctx.store.stock_on_hand(p.id) - ctx.store.reserved(p.id)
         row = {"product_id": p.id, "name": p.name, "unit": p.base_unit, "price": naira(p.sell_price_kobo)}
         if customer:
-            row["in_stock"] = available > 0
+            row["in_stock"] = available > 0 or not reports.tracks_stock(ctx.store, p.id)
+            row["has_photo"] = bool(p.photo)
         else:
             row.update(match=round(score, 2), stock=available, usual_price_range=
                        f"{naira(p.price_floor)}-{naira(p.price_ceiling)}")
@@ -173,7 +270,7 @@ def _proposal_from_args(ctx, a):
             due_date=date.fromisoformat(a["due_date"]) if a.get("due_date") else None,
             memo=a.get("memo", ""),
             evidence_id=ctx.evidence_id,
-            unclear_amounts=[{"path": u["path"], "text": u["text"],
+            unclear_amounts=[{"path": _kobo_path(u["path"]), "text": u["text"],
                               "candidates_kobo": [_kobo(c) for c in u["candidates_naira"]]}
                              for u in a.get("unclear_amounts") or []],
         )
@@ -194,6 +291,12 @@ def _proposal_from_args(ctx, a):
     if unseen:
         return None, [f"look these up with find_product/find_contact first: {unseen}"]
     return p, []
+
+
+def _kobo_path(path):
+    """Models often name the field as the tool does ("amount_naira", "items.0.unit_price_naira")."""
+    path = path.strip().replace("_naira", "_kobo")
+    return {"amount": "amount_kobo", "paid": "paid_kobo"}.get(path, path)
 
 
 def read_document(ctx):
@@ -238,11 +341,24 @@ def record_batch(ctx, entries, title="From your photo"):
     if clean:
         total = sum(p.items_total_kobo or p.amount_kobo or 0 for p in clean)
         lines = "\n".join(f"• {describe(p, ctx.store)}" for p in clean)
+        # Each line was checked alone; together they can still empty the till.
+        lines += "".join(f"\n⚠️ Together these take your {account} to {naira(left)}."
+                         for account, left in _left_after(clean, ctx.store))
         a = ctx.store.add_approval("batch", {"proposals": [p.to_json() for p in clean]},
                                    f"{title}: {len(clean)} entr{'y' if len(clean) == 1 else 'ies'}, "
                                    f"{naira(total)}\n{lines}\nRecord all?", [CONFIRM, CANCEL])
         ctx.tell_owner(a["question"], buttons_for(a))
     return {"status": "waiting_for_owner", "batched": len(clean), "asked_separately": len(asked)}
+
+
+def _left_after(proposals, store):
+    """[(account, balance after)] for each of cash/bank the batch would take below zero."""
+    out = {}
+    for p in proposals:
+        account, kobo = money_out(p)
+        if account in ("cash", "bank"):
+            out[account] = out.get(account, 0) + kobo
+    return [(a, store.account_balance(a) - k) for a, k in out.items() if k and store.account_balance(a) - k < 0]
 
 
 def normalize_phone(raw):
@@ -298,8 +414,28 @@ def cancel_entry(ctx, entry_id, reason):
 
 
 def report(ctx, kind, period="today"):
-    data = reports.report(ctx.store, kind, period)
-    return json.loads(json.dumps(data, default=str))
+    if kind == "coach":
+        from app.ledger import coach
+        return {"tips": [t["text"] for t in coach.tips(ctx.store, limit=5)] or ["Nothing to flag: prices and stock look fine."]}
+    data = reports.savings(ctx.store) if kind == "savings" else reports.report(ctx.store, kind, period)
+    return _in_naira(json.loads(json.dumps(data, default=str)))
+
+
+def _in_naira(data, kobo=False):
+    """{"sales_kobo": 11130000} → {"sales": "₦111,300"}: whole naira, as she would say it.
+    Everything under a *_kobo key is kobo, e.g. {"expenses_kobo": {"stock_loss": 380000}}."""
+    if isinstance(data, list):
+        return [_in_naira(x, kobo) for x in data]
+    if isinstance(data, dict):
+        return {(k[:-5] if k.endswith("_kobo") else k): _in_naira(v, kobo or k.endswith("_kobo"))
+                for k, v in data.items()}
+    if kobo and isinstance(data, (int, float)) and not isinstance(data, bool):
+        return _whole_naira(data)
+    return data
+
+
+def _whole_naira(kobo):
+    return money.fmt(kobo, exact=False)
 
 
 def ask_owner(ctx, question, options=None):
@@ -309,10 +445,76 @@ def ask_owner(ctx, question, options=None):
     return {"status": "asked"}
 
 
+def business_statement(ctx):
+    from app.ledger.reports import business_statement as build
+    s = build(ctx.store)
+    out = {"from": str(s["from"]), "to": str(s["to"]), "days_of_records": s["days"],
+           **_in_naira({k: s[k] for k in ("total", "avg_weekly_sales_kobo", "cash_kobo", "bank_kobo", "stock_value_kobo",
+                                           "owed_to_shop_kobo", "owed_to_suppliers_kobo")}),
+           "collection_percent": s["collection_pct"], "entries": s["entries"]}
+    if ctx.statement_link:
+        out["link"] = ctx.statement_link()
+        out["link_note"] = "Give her this link exactly as it is. It works for 7 days; she can print it or send it to the lender."
+    if s["days"] < 60:
+        out["note"] = "Less than two months of records: lenders usually want three. Say so kindly."
+    return out
+
+
+def set_preferences(ctx, **a):
+    changes = {}
+    summary = {}
+    if a.get("summary_frequency"):
+        summary["frequency"] = a["summary_frequency"]
+    if a.get("summary_hour") is not None:
+        summary["hour"] = a["summary_hour"]
+    if a.get("summary_weekday"):
+        summary["weekday"] = shop_prefs.WEEKDAYS.index(a["summary_weekday"])
+    if summary:
+        changes["summary"] = summary
+    savings = {}
+    if a.get("savings_percent") is not None:
+        savings["percent"] = a["savings_percent"]
+    if a.get("savings_goal_naira") is not None:
+        savings["goal_kobo"] = _kobo(a["savings_goal_naira"])
+    if a.get("savings_name"):
+        savings["name"] = a["savings_name"]
+    if savings:
+        changes["savings"] = savings
+    for k in ("reminder_tone", "language", "currency", "low_data", "share_score", "share_prices"):
+        if a.get(k) is not None:
+            changes[k] = a[k]
+    if not changes:
+        return {"error": "nothing to change; ask her what she wants changed"}
+    saved, errors = shop_prefs.save(ctx.store, changes)
+    if errors:
+        return {"status": "rejected", "errors": errors}
+    money.use(ctx.store)
+    return {"status": "saved", "summary": shop_prefs.describe_summary(saved), "settings": shop_prefs.public(saved),
+            "note": "Tell her in one line what changed. She can also change these in Shop ⚙."}
+
+
+def sabi_score(ctx):
+    from app.ledger.score import sabi_score as score
+    s = score(ctx.store)
+    return {"score": s["score"], "band": s["band"], "note": s["note"], "next_step": s["next_step"],
+            "parts": [{"part": p["name"], "out_of_100": p["value"], "weight_percent": p["weight"], "measured": p["measured"]}
+                      for p in s["parts"]],
+            "explain": "It reads only her own books. It is not a bank's credit score. Give her the score, the band and "
+                       "the one next step; list the parts only if she asks."}
+
+
+def market_prices(ctx, product_id):
+    if ctx.market is None:
+        return {"note": "Shared prices come from other Sabi shops; none are connected to this shop yet."}
+    data = ctx.market(product_id)
+    return _in_naira(data)
+
+
 # --- customer handlers -----------------------------------------------------
 
 def my_open_orders(ctx):
-    return {"orders": [{"order_id": o["id"], "total": naira(o["total_kobo"]), "status": o["status"],
+    return {"orders": [{"order_id": o["id"], "ref": orders.order_ref(o["id"]), "total": naira(o["total_kobo"]),
+                        "status": o["status"],
                         "items": [f"{i['qty']} x {ctx.store.get_product(i['product_id']).name}" for i in o["items"]]}
                        for o in ctx.store.open_orders(ctx.contact_id)]}
 
@@ -326,12 +528,27 @@ OWNER_HANDLERS = {
     "promo_ideas": lambda ctx: promo_flow.ideas(ctx),
     "make_promo": lambda ctx, product_id=None, scene="default": promo_flow.make_promo(ctx, ctx.promo, product_id, scene),
     "recent_entries": recent_entries, "cancel_entry": cancel_entry, "report": report, "ask_owner": ask_owner,
+    "learn_business": knowledge.learn, "update_shop_info": knowledge.update_shop_info,
+    "business_statement": business_statement, "setup_from_photo": onboarding.setup_from_photo,
+    "add_products": onboarding.add_products,
+    "set_preferences": set_preferences, "check_payment": payments.check_payment, "sabi_score": sabi_score,
+    "market_prices": market_prices, "save_product_photo": product_photos.save_product_photo,
 }
+def customer_find_product(ctx, query):
+    result = find_product(ctx, query, customer=True)
+    sales.note_lookup(ctx, query, result["matches"])
+    return result
+
+
 CUSTOMER_HANDLERS = {
-    "find_product": lambda ctx, query: find_product(ctx, query, customer=True),
+    "find_product": customer_find_product,
+    "match_photo": product_photos.match_photo,
+    "send_product_photo": product_photos.send_product_photo,
     "create_order": lambda ctx, items: orders.create_order(ctx, items),
     "record_payment_claim": orders.record_payment_claim,
     "my_open_orders": my_open_orders,
+    "shop_details": knowledge.shop_details,
+    "hand_to_owner": sales.hand_to_owner,
 }
 
 

@@ -25,7 +25,7 @@ OWNER, CUSTOMER = "owner-cli", "customer-cli"
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--customer", action="store_true")
-    ap.add_argument("--backend", choices=["meta", "baseten"], default=None)
+    ap.add_argument("--backend", choices=["meta", "baseten", "fireworks"], default=None)
     args = ap.parse_args()
 
     store = demo_store()

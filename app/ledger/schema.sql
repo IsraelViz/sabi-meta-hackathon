@@ -46,6 +46,7 @@ create table if not exists contacts (
   last_inbound_at timestamptz                  -- last message from them; WhatsApp's 24-hour window
 );
 alter table contacts add column if not exists last_inbound_at timestamptz;
+alter table products add column if not exists photo text;   -- the shop's own picture, sent to customers
 
 create table if not exists reminders (
   id          text primary key default gen_random_uuid()::text,
@@ -134,6 +135,26 @@ create table if not exists approvals (
   answered_at timestamptz,
   created_at  timestamptz not null default now()
 );
+
+-- Sales: the current deal with each customer, kept by code from what happens in the chat.
+create table if not exists leads (
+  contact_id     text primary key references contacts(id),
+  stage          text not null default 'asking' check (stage in ('asking','ordered','paid')),
+  interests      jsonb not null default '[]',      -- product ids they asked about
+  unmet          jsonb not null default '[]',      -- asked for but not sold here, or out of stock
+  order_id       text references orders(id),
+  handoff_reason text,
+  handoff_until  timestamptz,                      -- the owner is handling this chat until then
+  owner_said     jsonb not null default '[]',      -- what the owner replied, so Sabi stays consistent
+  followed_up_at timestamptz,                      -- one follow-up per deal
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now()
+);
+alter table businesses add column if not exists shop_info text not null default '';
+alter table businesses add column if not exists links jsonb not null default '{}';      -- website, instagram, facebook, whatsapp
+alter table businesses add column if not exists knowledge jsonb not null default '[]';  -- approved page text, for shop_details
+alter table businesses add column if not exists profile_updated_at text;
+alter table businesses add column if not exists prefs jsonb not null default '{}';   -- her settings: summary time, tone, savings...
 
 create table if not exists posts (
   id             text primary key default gen_random_uuid()::text,

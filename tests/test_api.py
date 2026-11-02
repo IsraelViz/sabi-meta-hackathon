@@ -39,6 +39,9 @@ def test_no_key_configured_allows_only_this_machine(setup):
     assert TestClient(app).get("/api/me").status_code == 200   # TestClient's host is local
     remote = TestClient(app, client=("203.0.113.9", 5000))
     assert remote.get("/api/me").status_code == 401
+    # Through a tunnel the connection is local, but the forwarding header gives the visitor away
+    tunnel = TestClient(app, client=("127.0.0.1", 5000))
+    assert tunnel.get("/api/me", headers={"cf-connecting-ip": "203.0.113.9"}).status_code == 401
 
 
 def test_summary(setup):

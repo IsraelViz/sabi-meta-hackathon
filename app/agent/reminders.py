@@ -26,10 +26,20 @@ TEMPLATE_TEXT = ("Hello {{1}}, this is a friendly reminder from {{2}} that {{3}}
                  "You can pay by transfer and reply here when done. Thank you!")
 
 DRAFT_PROMPT = """Write a short WhatsApp message from {shop} to a customer, {name}, reminding them that {amount} is
-still owed{due}. Write it as the shop owner talking to a regular customer in Lagos: warm, polite, no pressure,
-no threats, under 45 words. A little Pidgin is fine if it sounds natural. Mention the amount exactly as {amount}.
-Do not mention any other amount, any penalty, or anything you were not told. {extra}
+still owed{due}. Write it as the shop owner talking to a regular customer in Lagos. {tone} No threats, under 45 words.
+Mention the amount exactly as {amount}. Do not mention any other amount, any penalty, any account number, or
+anything you were not told. {extra}
 Reply with the message only."""
+
+TONES = {"gentle": "Warm and polite, no pressure. A little Pidgin is fine if it sounds natural.",
+         "firm": "Polite but clear and direct: the money is due and should be paid now.",
+         "pidgin": "Write it in friendly Nigerian Pidgin."}
+
+
+def _with_payment(store, body):
+    """How to pay goes in by code, after the wording check: account numbers would look like amounts to it."""
+    pay = (getattr(store, "business", {}).get("payment_details") or "").strip()
+    return f"{body}\n\nPay to: {pay}" if pay else body
 
 
 def in_window(contact):
@@ -68,19 +78,25 @@ def draft(ctx, contact, owed_kobo, due=None, instruction=None):
         return "template", render_template(*params), {
             "name": settings.reminder_template, "language": settings.reminder_template_lang, "params": params}
     if ctx.llm is None:
-        return "session", fallback_text(contact.name, shop, amount), None
+        return "session", _with_payment(ctx.store, fallback_text(contact.name, shop, amount)), None
+    from app import prefs
     due_text = f", which was due on {due:%A %d %B}" if due and due < date.today() else ""
     extra = f"The owner asked for this change: {instruction}" if instruction else ""
+    tone = TONES.get(prefs.get(ctx.store)["reminder_tone"], TONES["gentle"])
+    from app.agent.language import for_owner
+    lang = for_owner(ctx.store)
+    if lang != "English":
+        tone += f" Write it in {lang}, the language the shop uses, keeping the amount exactly as given."
     messages = [{"role": "user", "content": DRAFT_PROMPT.format(shop=shop, name=contact.name, amount=amount,
-                                                                due=due_text, extra=extra)}]
+                                                                due=due_text, extra=extra, tone=tone)}]
     for _ in range(2):
         text = (ctx.llm.chat(messages).content or "").strip().strip('"')
         problems = wording_problems(text, owed_kobo)
         if text and not problems:
-            return "session", text, None
+            return "session", _with_payment(ctx.store, text), None
         messages += [{"role": "assistant", "content": text},
                      {"role": "user", "content": "Fix this: " + "; ".join(problems or ["empty message"])}]
-    return "session", fallback_text(contact.name, shop, amount), None
+    return "session", _with_payment(ctx.store, fallback_text(contact.name, shop, amount)), None
 
 
 def _owed(store, contact_id):

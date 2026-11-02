@@ -24,6 +24,7 @@ class Settings:
 
     # Promotion: public URL for flyers (tunnel or deployment), Instagram and Facebook Page
     public_base_url: str = _env("PUBLIC_BASE_URL").rstrip("/")
+    vapid_subject: str = _env("VAPID_SUBJECT", "mailto:sabi-pilot@example.com")   # contact for phone push services
     media_dir: str = _env("MEDIA_DIR", "media_cache")
     ig_user_id: str = _env("IG_USER_ID")
     fb_page_id: str = _env("FB_PAGE_ID")
@@ -43,12 +44,36 @@ class Settings:
 
     # Owner app: the token her phone sends; voice notes and photos kept as evidence
     owner_app_token: str = _env("OWNER_APP_TOKEN")
+    statement_secret: str = _env("STATEMENT_SECRET")   # signs business-statement links; default: OWNER_APP_TOKEN
     private_media_dir: str = _env("PRIVATE_MEDIA_DIR", "private_media")
 
     llm_backend: str = _env("LLM_BACKEND", "meta")
     baseten_api_key: str = _env("BASETEN_API_KEY")
     baseten_base_url: str = _env("BASETEN_BASE_URL", "https://inference.baseten.co/v1")
     baseten_model: str = _env("BASETEN_MODEL", "meta-models/muse-spark-open-1026")
+    # Muse Spark Open on Fireworks serverless (US-only capacity), plus Whisper for voice notes
+    fireworks_api_key: str = _env("FIREWORKS_API_KEY")
+    fireworks_base_url: str = _env("FIREWORKS_BASE_URL", "https://us.api.fireworks.ai/inference/v1")
+    fireworks_model: str = _env("FIREWORKS_MODEL", "accounts/fireworks/models/muse-spark-open")
+    fireworks_transcribe_url: str = _env("FIREWORKS_TRANSCRIBE_URL",
+                                         "https://audio-turbo.api.fireworks.ai/v1/audio/transcriptions")
+    fireworks_transcribe_model: str = _env("FIREWORKS_TRANSCRIBE_MODEL", "whisper-v3-turbo")
+    # "meta" (Muse Voice Transcribe) | "baseten" (Muse Spark Open hears the audio itself)
+    # | "fireworks" (Whisper, if Fireworks offers it on your account). Empty: baseten when the chat
+    # model runs there, else meta. On WhatsApp-compressed test clips Muse Spark Open got every amount
+    # right while Voice Transcribe sometimes repeated a word ("five five hundred"), so baseten stays first.
+    transcribe_backend: str = _env("TRANSCRIBE_BACKEND")
+
+    def has_llm(self) -> bool:
+        return bool({"meta": self.model_api_key, "baseten": self.baseten_api_key,
+                     "fireworks": self.fireworks_api_key}.get(self.llm_backend))
+
+    def transcriber(self) -> str:
+        return self.transcribe_backend or ("baseten" if self.llm_backend == "baseten" else "meta")
+
+    def can_transcribe(self) -> bool:
+        return bool({"meta": self.model_api_key, "baseten": self.baseten_api_key,
+                     "fireworks": self.fireworks_api_key}.get(self.transcriber()))
 
     wa_phone_number_id: str = _env("WA_PHONE_NUMBER_ID")
     wa_access_token: str = _env("WA_ACCESS_TOKEN")
@@ -58,8 +83,15 @@ class Settings:
 
     owner_phone: str = _env("OWNER_PHONE")
     store: str = _env("STORE", "memory")
-    demo_history: bool = _env("DEMO_HISTORY", "0") == "1"   # memory store only: add a week of demo trading
+    shop_file: str = _env("SHOP_FILE")   # your shop (business info, products, contacts, opening stock); empty = demo shop
+    demo_history: bool = _env("DEMO_HISTORY", "0") == "1"   # a week of demo trading for the demo shop (Postgres: first run only)
     database_url: str = _env("DATABASE_URL")
+
+    # Pilot shops: real testers, each with her own books, chat in the app and a customer chat link.
+    # A Postgres URL, or "pgserver:<folder>" for an embedded Postgres kept in that folder. Empty = off.
+    shops_db: str = _env("SHOPS_DB")
+    admin_token: str = _env("ADMIN_TOKEN")             # /admin/ (create shops, read chats); default: OWNER_APP_TOKEN
+    shop_daily_messages: int = int(_env("SHOP_DAILY_MESSAGES", "400"))   # per shop, owner and customers together
     auto_post_limit_kobo: int = int(_env("AUTO_POST_LIMIT_NAIRA", "50000")) * 100
 
 

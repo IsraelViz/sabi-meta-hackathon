@@ -10,17 +10,20 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request
-from fastapi.responses import PlainTextResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.agent.orchestrator import Agent
 from app.api import router as api_router
 from app.channels import whatsapp
 from app.config import settings
+from app.agent import sales
 from app.jobs import daily_summary
+from app.jobs import pilot as pilot_jobs
+from app.ledger import reports
 from app.ledger.seed import demo_store
 from app.media.evidence_store import PrivateMedia
-from app.media.transcribe import transcribe
+from app.media.transcribe import shop_words, transcribe
 from app.models.llm import LLMClient
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -30,8 +33,9 @@ private_media = PrivateMedia(settings.private_media_dir)
 
 
 def make_store():
+    shop = {"path": settings.shop_file} if settings.shop_file else {}
     if settings.store == "memory":
-        store = demo_store()
+        store = demo_store(**shop)
         if settings.demo_history:   # a week of trading so the owner app has something to show
             from app.ledger.demo_week import add_history
             from app.promo.publish import LocalMedia
@@ -42,15 +46,33 @@ def make_store():
 
         pg = PostgresStore(settings.database_url)
         pg.apply_schema()
-        if pg.is_empty():   # first run: load the demo shop
-            demo_store(store=pg)
+        from app.ledger.seed import chart_of_accounts
+        pg.seed_accounts(chart_of_accounts())    # adds accounts introduced since the shop was made
+        from app.media import durable
+        durable.start(settings.database_url)     # pictures and voice notes outlive a host that wipes its disk
+        if pg.is_empty():   # first run: load the shop file, or the demo shop
+            demo_store(store=pg, **shop)
+            if settings.demo_history:
+                from app.ledger.demo_week import add_history
+                from app.promo.publish import LocalMedia
+                add_history(pg, media=LocalMedia())
         return pg
     raise RuntimeError(f"STORE must be 'memory' or 'postgres', not {settings.store!r}")
 
 
 store = make_store()
-agent = Agent(store, LLMClient() if settings.model_api_key or settings.llm_backend == "baseten" else None,
-              settings.owner_phone, settings.auto_post_limit_kobo)
+def _statement_link():
+    from app.ledger.statement import make_token
+    return f"{settings.public_base_url or 'http://127.0.0.1:8000'}/s/{make_token()}"
+
+
+agent = Agent(store, LLMClient() if settings.has_llm() else None,
+              settings.owner_phone, settings.auto_post_limit_kobo, statement_link=_statement_link)
+shops = None
+if settings.shops_db:   # pilot: real testers, each with her own books, chatting in the app
+    from app.shops import Shops, connect_url
+    shops = Shops(connect_url(settings.shops_db), agent.llm, media_root=Path(settings.media_dir) / "shops",
+                  daily_messages=settings.shop_daily_messages)
 _seen_ids: deque = deque(maxlen=2000)   # Meta retries webhooks; process each message once
 
 
@@ -58,10 +80,13 @@ _seen_ids: deque = deque(maxlen=2000)   # Meta retries webhooks; process each me
 async def lifespan(_app):
     task = None
     if settings.owner_phone and settings.wa_access_token:
-        task = asyncio.create_task(daily_summary.run_forever(store, whatsapp.send, settings.owner_phone))
+        task = asyncio.create_task(daily_summary.run_forever(store, whatsapp.send, settings.owner_phone, agent.llm))
+    followups = asyncio.create_task(sales.run_forever(store, whatsapp.send)) if settings.wa_access_token else None
+    pilot = asyncio.create_task(pilot_jobs.run_forever(shops)) if shops else None
     yield
-    if task:
-        task.cancel()
+    for t in (task, followups, pilot):
+        if t:
+            t.cancel()
 
 
 app = FastAPI(title="Sabi", lifespan=lifespan)
@@ -108,7 +133,10 @@ async def process(msg: whatsapp.Inbound):
             audio, mime = await whatsapp.download_media(msg.media_id)
             # Keep the voice note itself: it is the receipt behind every number it produces.
             media_url = private_media.save(audio, mime)
-            text = await transcribe(audio)
+            if not settings.can_transcribe():
+                await whatsapp.send(msg.sender, "I can't listen to voice notes yet. Please type it for me.")
+                return
+            text = await transcribe(audio, keywords=shop_words(store))
             if not text:
                 await whatsapp.send(msg.sender, "I couldn't hear that voice note. Please send it again or type it.")
                 return
@@ -139,9 +167,20 @@ async def process(msg: whatsapp.Inbound):
 # --- owner app ------------------------------------------------------------
 
 app.state.store = store
+app.state.llm = agent.llm   # the owner app's "learn from my pages" uses the same model
 app.state.owner_token = settings.owner_app_token
 app.state.private_media_dir = settings.private_media_dir
+app.state.shops = shops
+app.state.admin_token = settings.admin_token
 app.include_router(api_router)
+if shops:
+    from app import pilot
+    from app.api import require_owner
+    app.include_router(pilot.owner_router(require_owner))
+    app.include_router(pilot.customer_router())
+    app.include_router(pilot.admin_router())
+    app.mount("/chat", StaticFiles(directory=WEB_DIR / "chat"), name="customer-chat")
+    app.mount("/admin", StaticFiles(directory=WEB_DIR / "admin", html=True), name="admin")
 app.mount("/app", StaticFiles(directory=WEB_DIR, html=True), name="owner-app")
 
 _demo_registry = None
@@ -161,6 +200,33 @@ if settings.demo_enabled:
     from app.demo import make_router as make_demo_router
     app.include_router(make_demo_router(demo_registry))
     app.mount("/demo", StaticFiles(directory=WEB_DIR / "demo", html=True), name="demo")
+
+
+@app.get("/results", response_class=HTMLResponse)
+def results_page():
+    """The pilot in numbers, public: totals only. Quotes appear only if the admin chose to show them."""
+    return HTMLResponse((WEB_DIR / "results.html").read_text(encoding="utf-8"))
+
+
+@app.get("/results/api")
+def results_api():
+    from app.shops import as_json
+    if shops is None:
+        raise HTTPException(404, "no pilot is running")
+    return as_json(shops.results())
+
+
+@app.get("/s/{token}", response_class=HTMLResponse)
+def shared_statement(token: str):
+    """The business statement she shared with a lender. The signed link stops working after 7 days."""
+    from app.ledger.statement import page, token_shop
+    shop_id = token_shop(token)
+    books = store if shop_id == "" else (shops.get(shop_id).store if shops and shop_id and shops.get(shop_id) else None)
+    if books is None:
+        return HTMLResponse("<p style='font-family:system-ui;padding:24px'>This statement link has expired. "
+                            "Ask the shop owner for a new one.</p>", status_code=404)
+    return HTMLResponse(page(books),
+                        headers={"Cache-Control": "private, no-store", "X-Robots-Tag": "noindex"})
 
 
 @app.get("/")

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Sabi Pilot Results</title>
+<style>
+  :root { --bg: #FBF6EE; --card: #FFFFFF; --ink: #21180F; --muted: #6B5D4D; --line: #EADFCC; --accent: #C2410C; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #17110C; --card: #221A13; --ink: #F5EBDD; --muted: #B9A891; --line: #3A2E22; --accent: #FB923C; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 16px 48px; }
+  h1 { font-size: 30px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+  .card span { display: block; color: var(--muted); font-size: 13px; }
+  .card b { display: block; font-size: 28px; font-variant-numeric: tabular-nums; color: var(--accent); }
+  .card small { color: var(--muted); font-size: 12px; }
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 28px 0 10px; }
+  blockquote { margin: 0 0 10px; background: var(--card); border-left: 4px solid var(--accent); border-radius: 8px; padding: 12px 14px; }
+  blockquote footer { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .how { color: var(--muted); font-size: 14px; }
+  .how li { margin-bottom: 4px; }
+  .err { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Sabi with real traders</h1>
+  <p class="sub" id="sub">Loading the pilot's numbers…</p>
+  <div class="grid" id="kpis"></div>
+  <div id="quotes"></div>
+  <h2>How these numbers are counted</h2>
+  <ul class="how">
+    <li>Every message to and from Sabi in the pilot is logged on the server; these are totals across all shops, with no names or chats.</li>
+    <li><b>Entries</b> are double-entry records in each trader's books, each checked by code before it was saved.</li>
+    <li><b>Reply time</b> is the median time from a message arriving to Sabi's answer, including the AI model.</li>
+    <li><b>Errors</b> are replies where something failed on Sabi's side. <b>Thumbs down</b> are replies a trader flagged as wrong.</li>
+    <li>Quotes appear only with the trader's permission.</li>
+  </ul>
+</main>
+<script>
+const naira = k => "₦" + Math.round(k / 100).toLocaleString("en-NG");
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const day = iso => iso ? new Date(iso).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" }) : "";
+fetch("/results/api").then(r => r.ok ? r.json() : Promise.reject(r.status)).then(r => {
+  const kinds = Object.entries(r.by_kind).filter(([, n]) => n).map(([k, n]) => `${n} ${k.toLowerCase()}${n > 1 ? "s" : ""}`).join(", ");
+  document.getElementById("sub").textContent = `${r.shops} Nigerian traders (${kinds}) used Sabi for their books and customers`
+    + (r.from ? `, ${day(r.from)} to ${day(r.to)}.` : ".");
+  const kpi = (label, value, note = "") => `<div class="card"><span>${label}</span><b>${value}</b><small>${note}</small></div>`;
+  document.getElementById("kpis").innerHTML = [
+    kpi("Messages to Sabi", r.messages.toLocaleString(), `${r.voice_notes} voice notes · ${r.photos} photos`),
+    kpi("Entries in their books", r.entries.toLocaleString(), `${r.products} products set up`),
+    kpi("Customers served", r.customers.toLocaleString(), `${r.customer_messages} customer messages`),
+    kpi("Orders taken", r.orders.toLocaleString(), "by Sabi in customer chats"),
+    kpi("Sales recorded", naira(r.sales_kobo), "across all shops"),
+    kpi("Median reply time", (r.median_reply_ms / 1000).toFixed(1) + " s", "message in to answer out"),
+    kpi("Errors", `${r.error_rate_pct}%`, `${r.errors} of ${r.replies} replies`),
+    kpi("Thumbs down", r.thumbs_down, "replies traders flagged"),
+  ].join("");
+  if (r.quotes.length) document.getElementById("quotes").innerHTML = `<h2>What the traders said</h2>` +
+    r.quotes.map(q => `<blockquote>“${esc(q.text)}”<footer>— ${esc(q.who)}</footer></blockquote>`).join("");
+}).catch(() => { document.getElementById("sub").innerHTML = `<span class="err">The pilot results aren't available right now.</span>`; });
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 """One client for every chat model: Muse Spark on the Meta Model API, or Muse
-Spark Open on Baseten. Both speak the OpenAI chat-completions format, so
-switching is a config change (LLM_BACKEND)."""
+Spark Open on Baseten or Fireworks. All speak the OpenAI chat-completions
+format, so switching is a config change (LLM_BACKEND)."""
 from dataclasses import dataclass
 
 from app.config import settings
@@ -30,14 +30,18 @@ class LLMClient:
         if self.backend == "baseten":
             self.model = settings.baseten_model
             self._client = OpenAI(base_url=settings.baseten_base_url, api_key=settings.baseten_api_key)
+        elif self.backend == "fireworks":
+            self.model = settings.fireworks_model
+            self._client = OpenAI(base_url=settings.fireworks_base_url, api_key=settings.fireworks_api_key)
         else:
             self.model = settings.chat_model
             # The OpenAI SDK does not read MODEL_API_KEY on its own.
             self._client = OpenAI(base_url=settings.meta_base_url, api_key=settings.model_api_key)
 
     def chat(self, messages, tools=None, **kwargs) -> Reply:
-        resp = self._client.chat.completions.create(
-            model=self.model, messages=messages, tools=tools or None, **kwargs)
+        if tools:   # Fireworks rejects "tools": null, so leave the field out when there are none
+            kwargs["tools"] = tools
+        resp = self._client.chat.completions.create(model=self.model, messages=messages, **kwargs)
         msg = resp.choices[0].message
         calls = [ToolCall(c.id, c.function.name, c.function.arguments or "{}") for c in (msg.tool_calls or [])]
         return Reply(

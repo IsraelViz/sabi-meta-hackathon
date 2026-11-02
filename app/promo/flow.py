@@ -16,8 +16,10 @@ from PIL import Image
 from app.config import settings
 from app.normalize.amounts import naira
 from app.promo import ranking
+from app.agent.language import for_owner
 from app.promo.caption import write_caption
 from app.promo.compose import compose, to_jpeg
+from app.media.counting import sam_available
 from app.promo.cutout import CenterCutter, SamCutter
 from app.promo.imagegen import GradientBackground, MuseImage
 from app.promo.publish import LocalMedia, MetaPublisher
@@ -35,7 +37,7 @@ class PromoServices:
 
 def default_services():
     return PromoServices(
-        cutter=SamCutter() if settings.sam_endpoint else CenterCutter(),
+        cutter=SamCutter() if sam_available() else CenterCutter(),
         backgrounds=MuseImage() if settings.model_api_key else GradientBackground(),
         media=LocalMedia(),
         publisher=MetaPublisher(),
@@ -90,6 +92,8 @@ def make_promo(ctx, services, product_id=None, scene="default"):
         background = GradientBackground().generate(scene)
         tools["background"] = f"gradient ({services.backgrounds.name} failed: {e})"
 
+    from app.agent.product_photos import remember_from_flyer
+    remember_from_flyer(ctx, product)
     cut_file = services.media.save(_png(cutout), "png")
     bg_file = services.media.save(_png(background), "png")
     post = _render_and_ask(ctx, services, product, pick.reason, cut_file["path"], bg_file["path"], tools)
@@ -104,7 +108,8 @@ def _render_and_ask(ctx, services, product, reason, cutout_path, background_path
                     whatsapp=settings.shop_whatsapp_display or None)
     saved = services.media.save(to_jpeg(flyer), "jpg")
     caption, source = write_caption(ctx.llm, shop=shop, product=product.name, price_kobo=product.sell_price_kobo,
-                                    unit=product.base_unit, reason=reason, instruction=instruction)
+                                    unit=product.base_unit, reason=reason, instruction=instruction,
+                                    language=for_owner(ctx.store))
     post = ctx.store.add_post(product_id=product.id, reason=reason, caption=caption, caption_source=source,
                               asset_url=saved["url"], asset_path=saved["path"], cutout_path=cutout_path,
                               background_path=background_path, tools=tools)

@@ -20,6 +20,10 @@ def now():
     return datetime.now(timezone.utc)
 
 
+LEAD_DEFAULTS = {"stage": "asking", "interests": [], "unmet": [], "order_id": None, "handoff_reason": None,
+                 "handoff_until": None, "owner_said": [], "followed_up_at": None}
+
+
 def next_avg_cost(on_hand, avg_cost, qty, unit_cost):
     """Moving average after a stock move. Sales out at average cost leave it unchanged."""
     new_on_hand = on_hand + qty
@@ -41,6 +45,7 @@ class MemoryStore:
         self.runs: list[dict] = []
         self.posts: dict[str, dict] = {}
         self.reminders: dict[str, dict] = {}
+        self.leads: dict[str, dict] = {}
         self._seq = itertools.count(1)
 
     # --- catalogue -------------------------------------------------------
@@ -56,6 +61,9 @@ class MemoryStore:
 
     def update_product_price(self, pid, sell_price_kobo):
         self.products[pid].sell_price_kobo = sell_price_kobo
+
+    def set_product_photo(self, pid, url):
+        self.products[pid].photo = url
 
     def add_contact(self, c: Contact):
         self.contacts[c.id] = c
@@ -233,6 +241,9 @@ class MemoryStore:
         self.approvals[aid].update(status=status, answer=answer, answered_at=now())
         return self.approvals[aid]
 
+    def recent_approvals(self, kind, since):
+        return [a for a in self.approvals.values() if a["kind"] == kind and a["created_at"] >= since]
+
     def pending_approvals(self):
         return [a for a in self.approvals.values() if a["status"] == "pending"]
 
@@ -253,8 +264,24 @@ class MemoryStore:
     def list_posts(self):
         return sorted((dict(p) for p in self.posts.values()), key=lambda p: p["created_at"], reverse=True)
 
+    # --- sales leads: one current deal per customer ----------------------
+    def get_lead(self, contact_id):
+        lead = self.leads.get(contact_id)
+        return dict(lead) if lead else None
+
+    def save_lead(self, contact_id, **fields):
+        lead = self.leads.setdefault(contact_id, {**LEAD_DEFAULTS, "contact_id": contact_id, "created_at": now()})
+        lead.update(fields, updated_at=now())
+        return dict(lead)
+
+    def list_leads(self):
+        return sorted((dict(l) for l in self.leads.values()), key=lambda l: l["updated_at"], reverse=True)
+
     def log_run(self, **fields):
         self.runs.append({"created_at": now(), **fields})
+
+    def runs_for_evidence(self, evidence_id):
+        return [r for r in self.runs if r.get("evidence_id") == evidence_id]
 
     def recent_runs(self, limit=20):
         return self.runs[-limit:][::-1]

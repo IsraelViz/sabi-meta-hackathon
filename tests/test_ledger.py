@@ -127,11 +127,30 @@ def test_reversed_sale_drops_out_of_debtors(store):
 def test_moving_average_cost(store):
     # 12 cartons at 11,000 + 12 at 12,000 -> 11,500
     p = Proposal(kind="purchase", items=[Item("p-indomie", 12, 1_200_000)], contact_id="c-depot",
-                 paid_kobo=14_400_000, payment_account="bank")
+                 paid_kobo=14_400_000, payment_account="bank", overdraw_ok=True)   # the demo bank starts empty
     entry, verdict = commit_proposal(p, store, LIMIT, approved=True)
     assert entry is not None, verdict.to_json()
     assert store.get_product("p-indomie").avg_cost_kobo == 1_150_000
     assert next_avg_cost(10, 500, -3, 500) == 500
+
+
+def test_paying_more_than_the_bank_shows_asks_first(store):
+    cash_in = sale(items=[Item("p-oil", 2, 1_100_000)], paid_kobo=2_200_000, payment_account="cash")
+    assert commit_proposal(cash_in, store, LIMIT)[0] is not None            # ₦22,000 in cash, bank still ₦0
+    p = Proposal(kind="purchase", items=[Item("p-indomie", 1, 1_100_000)], contact_id="c-depot",
+                 paid_kobo=1_100_000, payment_account="bank")
+    entry, verdict = commit_proposal(p, store, LIMIT, approved=True)        # Confirm alone doesn't skip it
+    assert entry is None
+    q = verdict.questions[0]
+    assert q.text.startswith("Your bank account shows only ₦0, but this pays ₦11,000")
+    assert [o["label"] for o in q.options] == ["Yes, record it", "Paid from cash", "Cancel"]
+    from_cash = apply_patch(p, q.options[1]["patch"])
+    assert commit_proposal(from_cash, store, LIMIT, approved=True)[0] is not None
+    assert store.account_balance("cash") == 1_100_000 and store.account_balance("bank") == 0
+    big = Proposal(kind="expense", amount_kobo=5_000_000, expense_account="transport", payment_account="cash")
+    q = commit_proposal(big, store, LIMIT, approved=True)[1].questions[0]
+    assert [o["label"] for o in q.options] == ["Yes, record it", "Cancel"]   # bank can't cover it either
+    assert commit_proposal(apply_patch(big, q.options[0]["patch"]), store, LIMIT, approved=True)[0] is not None
 
 
 # --- money that isn't clear never posts ----------------------------------

@@ -74,6 +74,10 @@ def build_entry(p: Proposal, store, created_by) -> Entry:
         lines += [Line("drawings", debit_kobo=p.amount_kobo),
                   Line(p.payment_account, credit_kobo=p.amount_kobo)]
 
+    elif kind == "saving":     # money put aside (ajo, esusu, savings box): still hers, so an asset
+        lines += [Line("savings", debit_kobo=p.amount_kobo),
+                  Line(p.payment_account, credit_kobo=p.amount_kobo)]
+
     elif kind == "stock_loss":
         for it in p.items:
             prod = store.get_product(it.product_id)

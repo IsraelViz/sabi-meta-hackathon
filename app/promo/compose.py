@@ -53,9 +53,11 @@ def _font(size):
 
 
 def price_label(kobo):
-    """'₦12,500' when the font can draw the naira sign, else 'N12,500'. Never a broken box."""
+    """'₦12,500' when the font can draw the money sign, else 'N12,500'. Never a broken box."""
     text = naira(kobo)
-    return text if has_glyph(_font(64), "₦") else "N" + text[1:]
+    font = _font(64)
+    return text if all(has_glyph(font, c) for c in set(text) if not c.isascii()) else (
+        text.replace("₦", "N").replace("₵", "C").replace("\u202f", " ").replace("\u00a0", " "))
 
 
 def _fit_text(draw, text, max_width, start_size, min_size=28):

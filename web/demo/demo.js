@@ -23,11 +23,19 @@ function toast(text) {
 
 // ---- chat rendering ---------------------------------------------------------
 
+// Links in a reply (like the business statement) open in a new tab. Runs on escaped text, so only real URLs match.
+function linkify(html) {
+  return html.replace(/(https?:\/\/[^\s<]+|\/demo\/api\/[\w-]+\/statement)/g, url => {
+    const clean = url.replace(/[).,;:!?]+$/, "");
+    return `<a href="${clean}" target="_blank" rel="noopener">${clean}</a>${url.slice(clean.length)}`;
+  });
+}
+
 function addBubble(who, cls, { body = "", image = null, buttons = [], meta = "" } = {}) {
   const chat = $(".chat", phones[who]);
   const el = document.createElement("div");
   el.className = `msg ${cls}`;
-  el.innerHTML = `${image ? `<img alt="" src="${esc(image)}">` : ""}${esc(body)}
+  el.innerHTML = `${image ? `<img alt="" src="${esc(image)}">` : ""}${linkify(esc(body))}
     ${meta ? `<div class="meta">${esc(meta)}</div>` : ""}`;
   if (buttons.length) {
     const box = document.createElement("div");
@@ -104,11 +112,13 @@ async function start() {
   lastSeq = 0;
   try {
     session = await post("/demo/api/session");
+    if (session.model) session.model = session.model.split("/").pop();   // accounts/fireworks/models/muse-spark-open
   } catch (e) {
     toast(`Couldn't start the demo: ${e.message}`);
     return;
   }
   $("#shop").textContent = `${session.shop} · demo shop with a week of history`;
+  $$(".mic").forEach(b => (b.hidden = !session.voice));   // no transcriber configured: no mic
   $("#model").textContent = session.model ? `Running on ${session.model}` : "AI model not connected: buttons only";
   renderBooks(session.books, true);
   for (const m of session.intro) addBubble(m.to, "note", { body: m.body });
@@ -233,6 +243,13 @@ $("#summary").onclick = async () => {
   try {
     const data = await post(`/demo/api/${session.id}/summary`);
     showReplies(data, "owner");
+  } catch (e) { toast(e.message); }
+};
+
+$("#later").onclick = async () => {
+  if (!session) return;
+  try {
+    showReplies(await post(`/demo/api/${session.id}/later`), "owner");
   } catch (e) { toast(e.message); }
 };
 

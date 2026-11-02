@@ -1,0 +1,10 @@
+.env
+.git
+.venv
+.pytest_cache
+__pycache__
+*.pyc
+media_cache
+private_media
+tests
+docs

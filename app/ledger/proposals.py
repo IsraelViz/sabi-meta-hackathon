@@ -6,7 +6,7 @@ shapes; validator.py checks it and posting.py turns it into balanced lines.
 from dataclasses import asdict, dataclass, field
 from datetime import date
 
-KINDS = ("sale", "purchase", "payment_in", "payment_out", "expense", "drawing", "stock_loss")
+KINDS = ("sale", "purchase", "payment_in", "payment_out", "expense", "drawing", "stock_loss", "saving")
 
 
 @dataclass
@@ -36,6 +36,8 @@ class Proposal:
     match_scores: dict = field(default_factory=dict)
     entry_date: date | None = None           # None = today; set for back-dated history (demo seed, imports)
     overpayment_ok: bool = False             # owner confirmed a payment above what is owed
+    overdraw_ok: bool = False                # owner confirmed paying more than cash/bank shows
+    credit_ok: bool = False                  # owner chose to give credit despite the customer's record
     cancel: bool = False                     # owner tapped Cancel
 
     @property

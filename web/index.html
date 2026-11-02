@@ -7,7 +7,9 @@
   <title>Sabi Books</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Sabi">
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
@@ -16,7 +18,12 @@
       <div class="shop" id="shop">Sabi</div>
       <div class="sub" id="sub">Your books</div>
     </div>
-    <button class="icon-btn" id="refresh" aria-label="Refresh">↻</button>
+    <div class="top-actions">
+      <button class="icon-btn install" id="install" hidden aria-label="Install the app" title="Put Sabi on your home screen">⬇</button>
+      <button class="icon-btn" id="feedback" aria-label="Send feedback" title="Tell us how Sabi is doing">✍</button>
+      <a class="icon-btn" href="#/shop" id="shop-btn" aria-label="Shop profile" title="What Sabi tells customers">⚙</a>
+      <button class="icon-btn" id="refresh" aria-label="Refresh">↻</button>
+    </div>
   </header>
 
   <div class="offline" id="offline" hidden>Offline — showing what was saved last time</div>
@@ -24,11 +31,13 @@
   <main id="view" aria-live="polite"></main>
 
   <nav class="tabs" aria-label="Sections">
+    <a href="#/chat" data-tab="chat" id="chat-tab" hidden><span class="ti">💬</span>Chat<i class="dot" id="chat-dot" hidden></i></a>
     <a href="#/today" data-tab="today"><span class="ti">◉</span>Today</a>
     <a href="#/ledger" data-tab="ledger"><span class="ti">≡</span>Ledger</a>
+    <a href="#/sales" data-tab="sales"><span class="ti">✆</span>Sales</a>
     <a href="#/owing" data-tab="owing"><span class="ti">↺</span>Owing</a>
     <a href="#/profit" data-tab="profit"><span class="ti">▲</span>Profit</a>
-    <a href="#/posts" data-tab="posts"><span class="ti">▣</span>Posts</a>
+    <a href="#/posts" data-tab="posts" id="posts-tab"><span class="ti">▣</span>Posts</a>
   </nav>
 
   <div class="sheet-backdrop" id="backdrop" hidden></div>

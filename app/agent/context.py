@@ -12,6 +12,7 @@ class Outgoing:
     image_url: str | None = None
     template: dict | None = None    # {"name", "language", "params"}: required outside the 24-hour window
     reminder_id: str | None = None  # set on payment reminders, so a failed send can be recorded
+    localized: bool = False         # already in the reader's language (the model's own reply): don't translate
 
 
 @dataclass
@@ -30,10 +31,17 @@ class RunContext:
     document_issues: list = field(default_factory=list)   # arithmetic problems; recording is blocked until settled
     counter: object = None                # stock-take counter (SAM or vision), injectable for tests
     promo_source: object = None           # zero-arg callable returning PromoServices; built only when needed
+    statement_link: object = None         # zero-arg callable returning a link to her business statement
+    market: object = None                 # product_id -> what other Sabi shops pay (pilot shops only)
+    media_source: object = None           # zero-arg callable returning the shop's picture store (LocalMedia)
     outbox: list[Outgoing] = field(default_factory=list)
     match_scores: dict = field(default_factory=dict)   # id -> best fuzzy score seen this run
     committed: list = field(default_factory=list)
     tool_log: list = field(default_factory=list)
+
+    @property
+    def media(self):
+        return self.media_source() if self.media_source else None
 
     @property
     def promo(self):

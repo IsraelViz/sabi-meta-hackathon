@@ -99,6 +99,75 @@ def test_unclear_amount_goes_to_owner_buttons_and_tap_commits(store):
     assert tap.outbox[0].body.startswith("Done.")
 
 
+def test_model_naming_the_naira_field_still_settles_and_asks_only_once(store):
+    # Muse Spark Open, live: path "amount_naira" (the tool's name), and record_entry called twice for one payment.
+    from app.ledger.posting import commit_proposal
+    from app.ledger.proposals import Item, Proposal
+    commit_proposal(Proposal(kind="sale", items=[Item("p-oil", 3, 1_100_000)], contact_id="c-chioma", paid_kobo=0),
+                    store, LIMIT)
+    args = {"kind": "payment_in", "contact_id": "c-chioma", "amount_naira": 2500, "payment_account": "bank",
+            "memo": "Chioma paid", "unclear_amounts": [{"path": "amount_naira", "text": "two-five",
+                                                        "candidates_naira": [2500, 25000]}]}
+    llm = ScriptedLLM([[("find_contact", {"query": "Chioma"})], [("record_entry", args)],
+                       [("record_entry", {**args, "memo": "Chioma transfer"})], ""])
+    agent = Agent(store, llm, OWNER, LIMIT)
+    ctx = agent.handle(sender=OWNER, text="Chioma pay two-five by transfer")
+    assert len([o for o in ctx.outbox if o.buttons]) == 1
+    assert tool_results(llm)[-1]["already_asked"] is True
+    tap = agent.handle(sender=OWNER, button_id=ctx.outbox[0].buttons[0]["id"], button_title="₦2,500")
+    assert [e.kind for e in tap.committed] == ["payment_in"] and store.account_balance("bank") == 250_000
+
+
+def test_same_sale_twice_in_a_day_waits_for_the_owner(store):
+    # Muse Spark Open, live: asked about profit, it re-recorded the morning's sale from history.
+    sale = {"kind": "sale", "items": [{"product_id": "p-indomie", "qty": 2, "unit_price_naira": None}],
+            "contact_id": "c-chioma", "paid_naira": 0, "memo": "2 ctn Indomie to Chioma"}
+    llm = ScriptedLLM([[("find_product", {"query": "indomie"}), ("find_contact", {"query": "Chioma"})],
+                       [("record_entry", sale)], "Done.",
+                       [("find_product", {"query": "indomie"}), ("find_contact", {"query": "Chioma"})],
+                       [("record_entry", {**sale, "memo": "Indomie for Chioma"})], ""])
+    agent = Agent(store, llm, OWNER, LIMIT)
+    first = agent.handle(sender=OWNER, text="I sell 2 carton Indomie give Chioma")
+    assert [e.kind for e in first.committed] == ["sale"]
+    again = agent.handle(sender=OWNER, text="How much profit I make?")
+    assert again.committed == [] and tool_results(llm)[-1]["reason"] == "the same entry was already recorded today"
+    q = again.outbox[0]
+    assert q.body.startswith("You already recorded this today") and q.buttons[0]["title"] == "Yes, record again"
+    # History tells the model what the first message already did
+    history = llm.seen[-1][0]
+    assert any("[Done" in (m.get("content") or "") and "record_entry → committed" in m["content"]
+               for m in history if m.get("role") == "assistant")
+    yes = agent.handle(sender=OWNER, button_id=q.buttons[0]["id"], button_title="Yes, record again")
+    assert [e.kind for e in yes.committed] == ["sale"]
+
+
+def test_button_taps_are_remembered(store):
+    from app.agent.approvals import submit
+    from app.agent.context import RunContext
+    from app.ledger.proposals import Item, Proposal
+    agent = Agent(store, None, OWNER, LIMIT)
+    ctx = RunContext(store, "owner", OWNER, OWNER, LIMIT)
+    submit(Proposal(kind="sale", items=[Item("p-eggs", 1, 100_000)], paid_kobo=100_000, payment_account="cash"), ctx)
+    agent.handle(sender=OWNER, button_id=ctx.outbox[0].buttons[0]["id"], button_title="₦1,000")
+    user, said = list(agent._history[OWNER])[-2:]
+    assert user["content"] == "(tapped: ₦1,000)" and said["content"]
+
+
+def test_unclear_amount_path_must_be_a_money_field(store):
+    from app.ledger.proposals import Proposal
+    from app.ledger.validator import validate
+    p = Proposal(kind="payment_in", contact_id="c-chioma", amount_kobo=250_000, payment_account="bank",
+                 unclear_amounts=[{"path": "contact_id", "text": "two-five", "candidates_kobo": [250_000, 2_500_000]}])
+    assert "must be amount_kobo" in validate(p, store, LIMIT).errors[0]
+
+
+def test_reports_reach_the_model_in_whole_naira(store):
+    from app.agent.tools import _in_naira
+    assert _in_naira({"sales_kobo": 11_130_000, "cogs_kobo": 9_834_362, "rows": [{"owes_kobo": -150}], "days": 7,
+                      "expenses_kobo": {"stock_loss": 380_000}}) ==         {"sales": "₦111,300", "cogs": "₦98,344", "rows": [{"owes": "-₦2"}], "days": 7,
+         "expenses": {"stock_loss": "₦3,800"}}
+
+
 def test_other_amount_then_typed_answer(store):
     from app.agent.approvals import submit
     from app.agent.context import RunContext

@@ -198,3 +198,17 @@ def test_sam_response_parsing_and_score_filter(monkeypatch):
     sam = SamCounter(endpoint="https://example.invalid/sam")
     monkeypatch.setattr(sam, "segment", lambda img, prompt: {"detections": [{"score": 0.9}, {"score": 0.3}, {"score": 0.7}]})
     assert sam.count(PHOTO, {"p-indomie": "Indomie carton"})["p-indomie"]["count"] == 2
+
+
+def test_sam_31_text_records_become_detections():
+    from app.media.counting import parse_records
+    text = ("<0f>0<|box;x1=40;y1=120;x2=140;y2=220;w=640;h=360;c=0.94|><|mask;x=0;y=0;c=0.94;data=101,101,~!!!6H|>,"
+            "2<|box;x1=190;y1=120;x2=290;y2=220;w=640;h=360;c=0.31|><|mask;x=0;y=0;c=0.31;data=101,101,!abc|>\n")
+    dets = parse_records(text)
+    assert [d["id"] for d in dets] == [0, 2]            # ids are not dense: count records, not the highest id
+    assert dets[0]["box"] == (40, 120, 140, 220) and dets[0]["size"] == (640, 360) and dets[0]["score"] == 0.94
+    assert dets[0]["mask"][4] == "lossless" and dets[1]["mask"][4] == "one_bit"
+    assert parse_records("") == []                       # nothing matched is a valid zero
+    sam = SamCounter(endpoint="https://example.invalid/sam")
+    sam.segment = lambda img, prompt: {"detections": dets}
+    assert sam.count(PHOTO, {"x": "red circle"})["x"]["count"] == 1   # the 0.31 guess is dropped

@@ -13,18 +13,24 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from app.ledger.model import Contact, Entry, LedgerError, Line, Product, StockMove, check_balanced
-from app.ledger.store import _oldest_open_due, new_id, next_avg_cost, now
+from app.ledger.store import LEAD_DEFAULTS, _oldest_open_due, new_id, next_avg_cost, now
 
 SCHEMA = Path(__file__).with_name("schema.sql")
 
 _PRODUCT_COLS = ("id", "name", "aliases", "base_unit", "sell_price_kobo", "min_price_kobo", "max_price_kobo",
-                 "avg_cost_kobo", "reorder_level", "countable")
+                 "avg_cost_kobo", "reorder_level", "countable", "photo")
 _CONTACT_COLS = ("id", "name", "kind", "phone", "aliases", "ig_handle", "last_inbound_at")
 
 
 class PostgresStore:
-    def __init__(self, dsn):
+    def __init__(self, dsn, schema=None):
+        """`schema` keeps one shop's books in its own Postgres schema (pilot shops share a database)."""
         self.conn = psycopg.connect(dsn, row_factory=dict_row, autocommit=True)
+        if schema:
+            if not schema.replace("_", "").isalnum():
+                raise ValueError(f"bad schema name {schema!r}")
+            self.conn.execute(f"create schema if not exists {schema}")
+            self.conn.execute(f"set search_path to {schema}")
 
     # --- setup -----------------------------------------------------------
     def apply_schema(self):
@@ -46,7 +52,9 @@ class PostgresStore:
 
     @business.setter
     def business(self, data):
-        fields = {k: v for k, v in data.items() if k in ("name", "payment_details", "timezone", "currency", "locale")}
+        fields = {k: Jsonb(v) if k in ("links", "knowledge", "prefs") else v for k, v in data.items()
+                  if k in ("name", "payment_details", "shop_info", "links", "knowledge", "profile_updated_at", "prefs",
+                           "timezone", "currency", "locale")}
         if self.conn.execute("select 1 from businesses").fetchone():
             sets = ", ".join(f"{k} = %({k})s" for k in fields)
             if sets:
@@ -74,6 +82,9 @@ class PostgresStore:
 
     def update_product_price(self, pid, sell_price_kobo):
         self.conn.execute("update products set sell_price_kobo = %s where id = %s", (sell_price_kobo, pid))
+
+    def set_product_photo(self, pid, url):
+        self.conn.execute("update products set photo = %s where id = %s", (url, pid))
 
     def add_contact(self, c: Contact):
         self.conn.execute(f"insert into contacts ({', '.join(_CONTACT_COLS)}) values "
@@ -293,6 +304,9 @@ class PostgresStore:
         return self.conn.execute("update approvals set status = %s, answer = %s, answered_at = now() where id = %s"
                                  " returning *", (status, answer, aid)).fetchone()
 
+    def recent_approvals(self, kind, since):
+        return self.conn.execute("select * from approvals where kind = %s and created_at >= %s", (kind, since)).fetchall()
+
     def pending_approvals(self):
         return self.conn.execute("select * from approvals where status = 'pending' order by created_at").fetchall()
 
@@ -319,6 +333,25 @@ class PostgresStore:
     def list_posts(self):
         return self.conn.execute("select * from posts order by created_at desc").fetchall()
 
+    # --- sales leads ------------------------------------------------------
+    _LEAD_JSON = ("interests", "unmet", "owner_said")
+
+    def get_lead(self, contact_id):
+        return self.conn.execute("select * from leads where contact_id = %s", (contact_id,)).fetchone()
+
+    def save_lead(self, contact_id, **fields):
+        fields = {k: Jsonb(v) if k in self._LEAD_JSON else v for k, v in fields.items()}
+        start = {k: Jsonb(v) if k in self._LEAD_JSON else v for k, v in LEAD_DEFAULTS.items()}
+        row = {**start, **fields, "contact_id": contact_id}
+        cols = ", ".join(row)
+        sets = ", ".join([f"{k} = excluded.{k}" for k in fields] + ["updated_at = now()"])
+        return self.conn.execute(
+            f"insert into leads ({cols}) values ({', '.join('%(' + k + ')s' for k in row)})"
+            f" on conflict (contact_id) do update set {sets} returning *", row).fetchone()
+
+    def list_leads(self):
+        return self.conn.execute("select * from leads order by updated_at desc").fetchall()
+
     def log_run(self, **f):
         self.conn.execute(
             "insert into agent_runs (trigger, persona, evidence_id, tool_calls, reply, tokens, latency_ms, error)"
@@ -326,6 +359,9 @@ class PostgresStore:
             (f.get("trigger"), f.get("persona"), f.get("evidence_id"),
              Jsonb(json.loads(json.dumps(f.get("tool_calls", []), default=str))),
              Jsonb(f.get("reply")), f.get("tokens"), f.get("latency_ms"), f.get("error")))
+
+    def runs_for_evidence(self, evidence_id):
+        return self.conn.execute("select * from agent_runs where evidence_id = %s order by id", (evidence_id,)).fetchall()
 
     def recent_runs(self, limit=20):
         return self.conn.execute("select * from agent_runs order by id desc limit %s", (limit,)).fetchall()

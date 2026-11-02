@@ -10,6 +10,7 @@ from pathlib import Path
 import httpx
 
 from app.config import settings
+from app.media import durable
 
 GRAPH = "https://graph.facebook.com"
 
@@ -23,6 +24,7 @@ class LocalMedia:
     def save(self, data: bytes, ext="jpg"):
         name = f"{secrets.token_hex(8)}.{ext}"   # unguessable, so drafts aren't browsable
         (self.dir / name).write_bytes(data)
+        durable.keep(self.dir / name, data)
         return {"name": name, "path": str(self.dir / name), "url": f"{self.base}/media/{name}" if self.base else None}
 
 

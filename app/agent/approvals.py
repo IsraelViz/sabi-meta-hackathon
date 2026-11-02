@@ -4,13 +4,14 @@ before anything is committed.
 
 Button ids look like "ap:<approval_id>:<option_index>".
 """
-from datetime import timedelta
+from datetime import date, timedelta
 
 from app.ledger.posting import commit_proposal, reverse
+from app.ledger.reports import headline_kobo
 from app.ledger.store import now
 from app.ledger.model import LedgerError
 from app.ledger.proposals import Proposal, apply_patch
-from app.normalize.amounts import find_amounts, naira
+from app.normalize.amounts import naira, read_amounts
 from app.normalize.fuzzy import best_match, name_similarity
 
 CONFIRM = {"label": "Confirm", "patch": [], "confirm": True}
@@ -41,7 +42,8 @@ def describe(p: Proposal, store):
         text = naira(p.amount_kobo) if p.amount_kobo is not None else "amount not set"
         total = ""
     label = {"sale": "Sale", "purchase": "Purchase", "payment_in": "Payment from", "payment_out": "Payment to",
-             "expense": f"Expense ({p.expense_account})", "drawing": "You took", "stock_loss": "Stock loss"}[p.kind]
+             "expense": f"Expense ({p.expense_account})", "drawing": "You took", "stock_loss": "Stock loss",
+             "saving": "Put aside for savings"}[p.kind]
     if p.kind in ("payment_in", "payment_out"):
         return f"{label} {who}: {text}"
     s = f"{label}: {text}{total}"
@@ -49,6 +51,8 @@ def describe(p: Proposal, store):
         s += f" — {who}"
     if p.kind in ("sale", "purchase") and p.paid_kobo is not None:
         s += ", paid" if p.paid_kobo == p.items_total_kobo else (", on credit" if p.paid_kobo == 0 else f", paid {naira(p.paid_kobo)}")
+        if p.paid_kobo and p.payment_account:
+            s += " by transfer" if p.payment_account == "bank" else " in cash"
         if p.due_date and p.paid_kobo < p.items_total_kobo:
             s += f", due {p.due_date:%a %d %b}"
     return s
@@ -56,16 +60,33 @@ def describe(p: Proposal, store):
 
 def submit(p: Proposal, ctx, approved=False):
     """Validate and commit, or park it and ask the owner. Returns a dict for the model."""
+    dup = None if approved else _same_as_today(p, ctx.store)
+    if dup:
+        if _already_asked(p, ctx.store):
+            return {"status": "waiting_for_owner", "already_asked": True,
+                    "note": "She was already asked about this and hasn't answered. Don't record it again."}
+        a = ctx.store.add_approval("proposal", {"proposal": p.to_json(), "approved": False},
+                                   f"You already recorded this today: {dup.memo or describe(p, ctx.store)} "
+                                   f"({naira(headline_kobo(dup))}). Record it again?",
+                                   [{**CONFIRM, "label": "Yes, record again"}, {**CANCEL, "label": "No, skip"}])
+        ctx.tell_owner(a["question"], buttons_for(a))
+        return {"status": "waiting_for_owner", "reason": "the same entry was already recorded today"}
     try:
         entry, verdict = commit_proposal(p, ctx.store, ctx.auto_post_limit_kobo, approved=approved)
     except LedgerError as e:
         return {"status": "rejected", "errors": [str(e)]}
     if entry:
         ctx.committed.append(entry)
+        if entry.kind == "sale":
+            from app.agent.alerts import after_sale
+            after_sale(ctx, entry)
         return {"status": "committed", "entry_id": entry.id, "summary": describe(p, ctx.store),
                 "notes": verdict.notes, **_stock_after(p, ctx.store)}
     if verdict.errors:
         return {"status": "rejected", "errors": verdict.errors}
+    if _already_asked(p, ctx.store):
+        return {"status": "waiting_for_owner", "already_asked": True,
+                "note": "She was already asked about this and hasn't answered. Don't record it again."}
     if verdict.questions:
         q = verdict.questions[0]
         a = ctx.store.add_approval("proposal", {"proposal": p.to_json(), "text_path": q.text_path,
@@ -76,6 +97,52 @@ def submit(p: Proposal, ctx, approved=False):
                                f"{describe(p, ctx.store)}. Record it?", [CONFIRM, CANCEL])
     ctx.tell_owner(a["question"] + "\n(" + "; ".join(verdict.approvals) + ")", buttons_for(a))
     return {"status": "waiting_for_owner", "reason": verdict.approvals}
+
+
+def _event_key(proposal_json):
+    """What makes two proposals the same business event, whatever message or memo they came with."""
+    return {k: v for k, v in proposal_json.items() if k not in ("evidence_id", "match_scores", "memo", "entry_date")}
+
+
+def _already_asked(p, store):
+    key = _event_key(p.to_json())
+    return any(a["kind"] == "proposal" and now() - a["created_at"] < ANSWER_WINDOW
+               and _event_key(a["payload"]["proposal"]) == key for a in store.pending_approvals())
+
+
+ITEM_LINES = {"sale": ("sales", "credit_kobo"), "purchase": ("inventory", "debit_kobo")}
+
+
+def _same_as_today(p, store, look_back=20):
+    """A committed entry from today that this proposal would repeat, if any.
+
+    Models re-read old messages; a trader rarely sells the same thing to the same
+    person twice in a day. Either way, a second copy waits for her to confirm.
+    """
+    if p.kind not in ITEM_LINES and p.kind not in ("payment_in", "payment_out", "expense"):
+        return None
+    if p.kind in ITEM_LINES:
+        want = []
+        for it in p.items:
+            prod = store.get_product(it.product_id)
+            price = it.unit_price_kobo if it.unit_price_kobo is not None else (prod.sell_price_kobo if prod else None)
+            if price is None:
+                return None
+            want.append((it.product_id, it.qty, it.qty * price))
+        want.sort()
+    today = date.today()
+    for e in reversed(store.list_entries()[-look_back:]):
+        if (e.kind != p.kind or e.status != "committed" or e.entry_date not in (None, today)
+                or e.contact_id != p.contact_id):
+            continue
+        if p.kind in ITEM_LINES:
+            account, side = ITEM_LINES[p.kind]
+            have = sorted((l.product_id, l.qty, getattr(l, side)) for l in e.lines if l.account == account and l.product_id)
+            if have == want:
+                return e
+        elif p.amount_kobo is not None and headline_kobo(e) == p.amount_kobo:
+            return e
+    return None
 
 
 def _stock_after(p, store):
@@ -161,6 +228,32 @@ def handle_button(button_id, ctx):
         settle_gap(a["payload"], option, ctx)
         return True
 
+    if a["kind"] == "catalog":
+        from app.agent.onboarding import settle_catalog
+        ctx.store.answer_approval(aid, "approved" if option.get("action") == "add" else "rejected", option["label"])
+        settle_catalog(a, option, ctx)
+        return True
+
+    if a["kind"] == "restock":
+        from app.agent.alerts import settle_restock
+        ctx.store.answer_approval(aid, "approved" if option.get("action") == "draft" else "rejected", option["label"])
+        settle_restock(a, option, ctx)
+        return True
+
+    if a["kind"] == "profile":
+        from app.agent.knowledge import settle_profile
+        if option.get("action") != "change":
+            ctx.store.answer_approval(aid, "approved" if option.get("action") == "use" else "rejected", option["label"])
+        settle_profile(a, option, ctx)
+        return True
+
+    if a["kind"] == "handoff":
+        from app.agent.sales import settle_handoff
+        if option.get("action") != "reply":
+            ctx.store.answer_approval(aid, "approved", option["label"])
+        settle_handoff(a, option, ctx)
+        return True
+
     if a["kind"] == "order_paid":
         from app.agent.orders import settle_order
         ctx.store.answer_approval(aid, "approved" if option.get("confirm") else "rejected", option["label"])
@@ -173,9 +266,19 @@ def handle_button(button_id, ctx):
 def handle_typed_answer(text, ctx):
     """If the owner owes us a typed answer (an amount, a name, a post change), apply it. Returns True if handled."""
     fresh = [a for a in ctx.store.pending_approvals() if now() - a["created_at"] < ANSWER_WINDOW]
-    edits = [a for a in fresh if a["kind"] in ("post", "reminder") and a["payload"].get("awaiting_text")]
+    edits = [a for a in fresh if a["kind"] in ("post", "reminder", "handoff", "profile") and a["payload"].get("awaiting_text")]
     if edits:
         a = max(edits, key=lambda x: x["created_at"])
+        if a["kind"] == "profile":
+            from app.agent.knowledge import revise_profile
+            ctx.store.answer_approval(a["id"], "rejected", f"change: {text}")
+            revise_profile(a, text, ctx)
+            return True
+        if a["kind"] == "handoff":
+            from app.agent.sales import send_owner_reply
+            ctx.store.answer_approval(a["id"], "approved", f"replied: {text}")
+            send_owner_reply(a, text, ctx)
+            return True
         ctx.store.answer_approval(a["id"], "rejected", f"change: {text}")
         if a["kind"] == "post":
             from app.promo.flow import revise_post
@@ -219,7 +322,7 @@ def handle_typed_answer(text, ctx):
 def typed_amount(text):
     """Kobo if the whole message is just an amount ("12500", "12.5k", "₦12,500"), else None."""
     t = text.strip()
-    amounts = [m for m in find_amounts(t) if not m.ambiguous]
+    amounts = [m for m in read_amounts(t) if not m.ambiguous]
     if len(amounts) == 1 and len(t) - len(amounts[0].text) <= 3:
         return amounts[0].candidates_kobo[0]
     digits = t.replace(",", "").lstrip("₦Nn").strip()

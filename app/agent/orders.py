@@ -1,7 +1,9 @@
 """Customer orders. A customer can never mark an order paid: a transfer
 screenshot only makes it `claimed_paid`, and the owner confirms she saw the
 bank alert. Fake screenshots are a common scam."""
+from app.agent import sales
 from app.agent.approvals import CANCEL, CONFIRM, buttons_for, submit
+from app.ledger import reports
 from app.ledger.proposals import Item, Proposal
 from app.normalize.amounts import naira
 
@@ -17,19 +19,34 @@ def create_order(ctx, items):
         if not isinstance(qty, int) or qty <= 0 or qty > 100:
             return {"error": "qty must be a whole number from 1 to 100"}
         available = ctx.store.stock_on_hand(prod.id) - ctx.store.reserved(prod.id)
-        if qty > available:
+        if qty > available and reports.tracks_stock(ctx.store, prod.id):
             return {"error": f"only {max(available, 0)} {prod.base_unit} of {prod.name} available"}
         lines.append({"product_id": prod.id, "qty": qty, "unit_price_kobo": prod.sell_price_kobo})
         total += qty * prod.sell_price_kobo
     order = ctx.store.add_order(ctx.contact_id, lines, total)
+    sales.on_order(ctx.store, ctx.contact_id, order)
     pay = getattr(ctx.store, "business", {}).get("payment_details", "Ask the shop for payment details.")
-    return {"order_id": order["id"], "total": naira(total), "pay_to": pay,
+    return {"order_id": order["id"], "ref": order_ref(order["id"]), "total": naira(total), "pay_to": pay,
             "items": [f"{l['qty']} x {ctx.store.get_product(l['product_id']).name}" for l in lines],
             "note": "Reserved for 24 hours."}
 
 
-def record_payment_claim(ctx, order_id, amount_naira=None, reference=None):
+def order_ref(order_id):
+    """What the customer sees: short enough to read out, unlike the id."""
+    return order_id[:6].upper()
+
+
+def _find_order(ctx, order_id):
     order = ctx.store.get_order(order_id)
+    if order is None:   # the model may pass the short ref
+        mine = [o for o in ctx.store.open_orders(ctx.contact_id) if o["id"].startswith(order_id.strip().lower())]
+        order = mine[0] if len(mine) == 1 else None
+    return order
+
+
+def record_payment_claim(ctx, order_id, amount_naira=None, reference=None):
+    order = _find_order(ctx, order_id)
+    order_id = order["id"] if order else order_id
     if order is None or order["contact_id"] != ctx.contact_id:
         return {"error": "no such order for this customer"}
     if order["status"] != "open":
@@ -40,9 +57,12 @@ def record_payment_claim(ctx, order_id, amount_naira=None, reference=None):
     mismatch = ""
     if amount_naira is not None and round(float(amount_naira) * 100) != order["total_kobo"]:
         mismatch = f" ⚠ The order total is {naira(order['total_kobo'])}."
+    from app.agent.payments import claim_check
+    checked = claim_check(ctx, order)
     a = ctx.store.add_approval("order_paid", {"order_id": order_id},
                                f"{who} says they paid {claimed}" + (f", ref {reference}" if reference else "")
-                               + f" for order {order_id[:6]}.{mismatch} Did you see the alert?",
+                               + f" for order {order_ref(order_id)}.{mismatch}"
+                               + (f"\n\n{checked}\n\n" if checked else " ") + "Did you see the alert?",
                                [{**CONFIRM, "label": "Yes, I saw it"}, {**CANCEL, "label": "No alert"}])
     ctx.tell_owner(a["question"], buttons_for(a))
     return {"status": "waiting_for_owner",
@@ -64,6 +84,7 @@ def settle_order(order_id, confirmed, ctx):
     result = submit(p, ctx, approved=True)
     if result["status"] == "committed":
         ctx.store.update_order(order_id, entry_id=result["entry_id"])
+        sales.on_paid(ctx.store, customer.id, order_id)
         ctx.say(f"Recorded: {result['summary']}.")
         if customer.phone:
             ctx.say("Payment confirmed. Thank you! Your order is being prepared.", to=customer.phone)

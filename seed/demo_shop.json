@@ -1,6 +1,7 @@
 {
   "business": {"name": "Mama Nkechi Provisions", "timezone": "Africa/Lagos",
-               "payment_details": "Transfer to DEMO BANK 0000000000 (Mama Nkechi Provisions). Send the screenshot here."},
+               "payment_details": "Transfer to DEMO BANK 0000000000 (Mama Nkechi Provisions). Send the screenshot here.",
+               "shop_info": "Shop 14, Oke-Arin Market, Lagos Island. Open Monday to Saturday, 7am to 7pm; closed Sunday. Pickup any time we are open. Delivery on Lagos Island is ₦1,500, same day for orders paid before 2pm. Mainland delivery is ₦3,000, next day. Payment by transfer or cash on pickup; no credit for new customers."},
   "products": [
     {"id": "p-indomie", "name": "Indomie carton", "aliases": ["indomie", "noodles", "super pack", "indomie super pack"], "base_unit": "carton", "sell_price_kobo": 1250000, "reorder_level": 4},
     {"id": "p-rice", "name": "Rice 50kg bag", "aliases": ["rice", "bag of rice", "foreign rice", "mama gold"], "base_unit": "bag", "sell_price_kobo": 7800000, "reorder_level": 2},

@@ -1,9 +1,9 @@
 """Cut the real product out of the owner's shelf photo with SAM 3.1.
 
 The flyer always shows her actual product, never an AI redraw of branded
-packaging. SAM's response format isn't in Meta's public docs yet, so
-`mask_from_detection` accepts the common shapes: a base64 PNG mask, a polygon,
-or at least a bounding box (a rectangular crop).
+packaging. `mask_from_detection` takes SAM 3.1's own mask (decoded with Meta's
+`meta-sam-parser`), and also a base64 PNG mask, a polygon, or at least a
+bounding box (a rectangular crop).
 """
 import base64
 import io
@@ -31,9 +31,26 @@ def _box(det):
     return None
 
 
+def _sam_mask(det, size):
+    """SAM 3.1's mask: a raster for the object's box, placed back on a photo-sized mask."""
+    from meta_sam_parser import SegmentationMask, decode_mask_to_raster
+    x, y, mh, mw, encoding, payload = det["mask"]
+    raster = decode_mask_to_raster(SegmentationMask(encoding=encoding, payload=payload, width=mw, height=mh))
+    piece = Image.frombytes("L", (mw, mh), bytes(255 if v else 0 for v in raster))
+    sw, sh = det.get("size") or size     # SAM's pixels; the photo may have been resized since
+    mask = Image.new("L", (sw, sh), 0)
+    mask.paste(piece, (int(det["box"][0]) + x, int(det["box"][1]) + y))
+    return mask if (sw, sh) == tuple(size) else mask.resize(size)
+
+
 def mask_from_detection(det, size):
     """Return an 'L' mask the size of the photo, or None if the detection has no shape we understand."""
     w, h = size
+    if isinstance(det.get("mask"), tuple):
+        try:
+            return _sam_mask(det, size)
+        except Exception:      # an undecodable mask still leaves the box
+            pass
     for key in ("mask_png", "mask"):
         val = det.get(key)
         if isinstance(val, str):

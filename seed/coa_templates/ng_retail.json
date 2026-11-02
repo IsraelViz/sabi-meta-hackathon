@@ -3,6 +3,7 @@
   {"code": "bank",      "name": "Bank / Transfer",     "kind": "asset"},
   {"code": "ar",        "name": "Accounts Receivable", "kind": "asset"},
   {"code": "inventory", "name": "Inventory",           "kind": "asset"},
+  {"code": "savings",   "name": "Savings / Ajo",       "kind": "asset"},
   {"code": "ap",        "name": "Accounts Payable",    "kind": "liability"},
   {"code": "vat",       "name": "VAT Payable",         "kind": "liability"},
   {"code": "equity",    "name": "Owner's Capital",     "kind": "equity"},

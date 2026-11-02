@@ -32,6 +32,7 @@ def _backdate_evidence(store, eid, when):
 
 def _post(store, said, days_ago, today, **kw):
     when = today - timedelta(days=days_ago)
+    kw.setdefault("credit_ok", True)   # the story's credit sales were her choice
     p = Proposal(entry_date=when, evidence_id=_say(store, said, when), memo=said[:60], **kw)
     entry, verdict = commit_proposal(p, store, LIMIT, approved=True)
     if entry is None:

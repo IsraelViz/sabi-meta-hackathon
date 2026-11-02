@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1F6F4A">
+  <title>Chat with the shop</title>
+  <link rel="icon" href="/app/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/chat/chat.css">
+</head>
+<body>
+  <header class="top">
+    <div class="avatar" id="avatar">S</div>
+    <div class="who"><div class="name" id="name">…</div><div class="sub" id="sub">Replies in seconds</div></div>
+  </header>
+
+  <main id="log" class="log" aria-live="polite"></main>
+
+  <section id="hello" class="hello" hidden>
+    <h1 id="hello-title">Welcome</h1>
+    <p id="hello-about"></p>
+    <label for="your-name">Your name</label>
+    <input id="your-name" autocomplete="name" placeholder="e.g. Bisi" maxlength="60">
+    <button id="start" class="btn">Start chatting</button>
+    <p class="fine">You'll chat with Sabi, the shop's assistant: prices, stock, orders and payment. It passes anything else to the shop owner. The shop keeps this chat.</p>
+  </section>
+
+  <form class="composer" id="composer" hidden>
+    <label class="cbtn" title="Send a photo (e.g. your payment screenshot)">📷<input type="file" accept="image/*" hidden id="photo"></label>
+    <input id="text" class="ctext" placeholder="Ask about prices, place an order…" autocomplete="off" enterkeyhint="send">
+    <button type="button" class="cbtn" id="mic" title="Voice note" hidden>🎙</button>
+    <button class="cbtn send" title="Send">➤</button>
+  </form>
+  <div id="toast" class="toast" hidden></div>
+  <script src="/chat/chat.js"></script>
+</body>
+</html>
