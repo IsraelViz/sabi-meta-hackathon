@@ -202,6 +202,12 @@ if settings.demo_enabled:
     app.mount("/demo", StaticFiles(directory=WEB_DIR / "demo", html=True), name="demo")
 
 
+@app.get("/privacy", response_class=HTMLResponse)
+def privacy_page():
+    """Meta needs a privacy policy and data deletion address before the app can go live."""
+    return HTMLResponse((WEB_DIR / "privacy.html").read_text(encoding="utf-8"))
+
+
 @app.get("/results", response_class=HTMLResponse)
 def results_page():
     """The pilot in numbers, public: totals only. Quotes appear only if the admin chose to show them."""
