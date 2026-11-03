@@ -84,6 +84,9 @@ class MemoryStore:
     def set_contact_offers(self, cid, ok):
         self.contacts[cid].offers_ok = ok
 
+    def set_contact_voice(self, cid, on):
+        self.contacts[cid].voice_replies = on
+
     def touch_inbound(self, cid, when=None):
         self.contacts[cid].last_inbound_at = when or now()
 

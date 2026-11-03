@@ -1,0 +1,50 @@
+"""Sabi's voice: numbers read the way people say them, and voice-note replies when asked."""
+import pytest
+
+from app.agent.orchestrator import Agent
+from app.media import speech
+from tests.test_agent import CUSTOMER, OWNER, ScriptedLLM
+
+
+def test_amounts_dates_classes_and_refs_are_read_as_words():
+    assert speech.to_words("*Total ₦42,000*") == "total forty two thousand naira"
+    assert speech.to_words("₦12.5k, 3.5k") == "twelve thousand five hundred naira, three thousand five hundred"
+    assert speech.to_words("Resumes Monday 11 January 2027") == "resumes monday eleven january twenty twenty seven"
+    assert speech.to_words("Civic Education JSS1 📦") == "civic education j s s one"
+    assert speech.to_words("Ref: 936220") == "ref. nine three six two two zero"
+    assert speech.to_words("due since 1st Nov, 22nd, 30th") == "due since first nov, twenty second, thirtieth"
+    assert speech.number_words(1_250_305) == "one million two hundred and fifty thousand three hundred and five"
+
+
+def test_long_or_number_heavy_answers_also_go_as_text():
+    assert speech.wants_text_too("Transfer to DEMO BANK 0000000000")
+    assert not speech.wants_text_too("Yes, we have it. How many copies?")
+
+
+def test_she_asks_once_for_a_voice_reply(store):
+    llm = ScriptedLLM([[("voice_replies", {"mode": "this_once"})], "Your profit this week is ₦45,000."])
+    out = Agent(store, llm, OWNER, 10**9).handle(sender=OWNER, text="tell me my profit, reply with voice note").outbox
+    assert out[-1].voice and out[-1].body.startswith("Your profit")
+    llm = ScriptedLLM(["Recorded."])
+    assert not Agent(store, llm, OWNER, 10**9).handle(sender=OWNER, text="sold 2 milk cash").outbox[-1].voice
+
+
+def test_a_customer_can_ask_for_every_answer_by_voice(store):
+    store.set_contact_phone("c-tunde", CUSTOMER)
+    llm = ScriptedLLM([[("voice_replies", {"mode": "always"})], "OK, I go dey talk."])
+    agent = Agent(store, llm, OWNER, 10**9)
+    agent.handle(sender=CUSTOMER, text="abeg talk am, I no fit read well")
+    assert store.get_contact("c-tunde").voice_replies is True
+    llm.turns.append("Peak milk na ₦700.")
+    assert agent.handle(sender=CUSTOMER, text="how much peak milk").outbox[-1].voice
+
+
+def test_the_nigerian_voice_gets_amounts_and_refs_it_can_say():
+    assert speech.for_speaking("*Total ₦42,000* 📦\nRef: 936220") == "Total 42,000 naira. Ref: 9 3 6 2 2 0"
+    assert speech.for_speaking("₦12.5k and 3.5k") == "12,500 naira and 3,500"
+
+
+@pytest.mark.skipif(not speech.mms.available(), reason="voice files not downloaded (scripts/get_voice.py)")
+def test_the_mms_voice_makes_a_whatsapp_voice_note():
+    ogg = speech.mms.voice_note("Good morning. Your list is ready: ₦42,000.")
+    assert ogg[:4] == b"OggS" and len(ogg) > 5000

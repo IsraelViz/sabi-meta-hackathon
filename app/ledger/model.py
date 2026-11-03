@@ -42,6 +42,7 @@ class Contact:
     ig_handle: str | None = None
     last_inbound_at: datetime | None = None   # last message from them (WhatsApp 24-hour window)
     offers_ok: bool | None = None             # said yes (True) or stop (False) to the shop's offers; None = never asked
+    voice_replies: bool = False               # asked for every answer as a voice note
 
 
 @dataclass

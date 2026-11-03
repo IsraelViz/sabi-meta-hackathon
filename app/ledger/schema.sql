@@ -47,6 +47,7 @@ create table if not exists contacts (
 );
 alter table contacts add column if not exists last_inbound_at timestamptz;
 alter table contacts add column if not exists offers_ok boolean;   -- yes/stop to the shop's WhatsApp offers
+alter table contacts add column if not exists voice_replies boolean not null default false;   -- answers as voice notes
 alter table products add column if not exists photo text;   -- the shop's own picture, sent to customers
 alter table products add column if not exists details jsonb not null default '{}';   -- books: author, edition, class...
 

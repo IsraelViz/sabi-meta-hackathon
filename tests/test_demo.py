@@ -43,7 +43,7 @@ def test_each_visitor_gets_their_own_shop():
     assert a["id"] != b["id"] and a["books"] == b["books"]
     r = c.post(f"/demo/api/{a['id']}/message", json={"who": "owner", "text": "I sell 2 carton Indomie give Chioma"}).json()
     assert r["messages"][-1] == {"to": "owner", "body": "Done. 2 cartons Indomie to Chioma, ₦25,000.", "buttons": [],
-                                 "image": None, "template": False}
+                                 "image": None, "template": False, "voice": False}
     assert r["tools"] == ["find_product", "find_contact", "record_entry"]
     assert r["books"]["recent"][0]["memo"] == "2 ctn Indomie to Chioma"
     assert c.get(f"/demo/api/{b['id']}/books").json() == b["books"]          # the other visitor is untouched

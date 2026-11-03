@@ -6,5 +6,6 @@ __pycache__
 *.pyc
 media_cache
 private_media
+models
 tests
 docs

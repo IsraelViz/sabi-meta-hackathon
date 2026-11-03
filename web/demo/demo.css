@@ -69,6 +69,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .icon { border: 0; background: var(--chip); width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-size: 16px; flex: none; cursor: pointer; }
 .icon.send { background: var(--accent); color: var(--accent-ink); }
 .icon.mic.rec { background: var(--bad); color: #fff; animation: pulse 1s ease-in-out infinite; }
+.icon.talk.talking { background: var(--accent, #0a7); color: #fff; }
+.icon.talk[data-state="listening"] { background: var(--bad); animation: pulse 1s ease-in-out infinite; }
+.voice-note { display: block; width: 100%; max-width: 260px; height: 36px; margin-top: 6px; }
 @keyframes pulse { 50% { opacity: .6; } }
 .chips { display: flex; gap: 6px; overflow-x: auto; padding: 0 8px 8px; background: var(--card); scrollbar-width: thin; }
 .chips button { flex: none; border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 4px 10px; font-size: 12px; }

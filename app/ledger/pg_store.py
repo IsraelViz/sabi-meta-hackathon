@@ -19,7 +19,8 @@ SCHEMA = Path(__file__).with_name("schema.sql")
 
 _PRODUCT_COLS = ("id", "name", "aliases", "base_unit", "sell_price_kobo", "min_price_kobo", "max_price_kobo",
                  "avg_cost_kobo", "reorder_level", "countable", "photo", "details")
-_CONTACT_COLS = ("id", "name", "kind", "phone", "aliases", "ig_handle", "last_inbound_at", "offers_ok")
+_CONTACT_COLS = ("id", "name", "kind", "phone", "aliases", "ig_handle", "last_inbound_at", "offers_ok",
+                 "voice_replies")
 
 
 class PostgresStore:
@@ -106,6 +107,9 @@ class PostgresStore:
 
     def set_contact_offers(self, cid, ok):
         self.conn.execute("update contacts set offers_ok = %s where id = %s", (ok, cid))
+
+    def set_contact_voice(self, cid, on):
+        self.conn.execute("update contacts set voice_replies = %s where id = %s", (on, cid))
 
     def touch_inbound(self, cid, when=None):
         self.conn.execute("update contacts set last_inbound_at = %s where id = %s", (when or now(), cid))

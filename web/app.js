@@ -731,6 +731,7 @@ async function chatSend(payload, shown, image) {
     const r = await send("POST", "/api/chat", payload);
     pending.remove(); $(".typing", log)?.remove();
     showMessages(r.messages);
+    return r.messages;
   } catch (e) {
     pending.remove(); $(".typing", log)?.remove();
     log.appendChild(bubble({ id: 0, role: "note", body: `Not sent: ${e.message}` }));
@@ -776,6 +777,7 @@ async function chat() {
       <label class="cbtn" title="Send a photo">📷<input type="file" accept="image/*" hidden id="chat-photo"></label>
       <input id="chat-text" class="ctext" placeholder="Tell Sabi what happened…" autocomplete="off" enterkeyhint="send">
       <button type="button" class="cbtn" id="chat-mic" title="Voice note">🎙</button>
+      <button type="button" class="cbtn" id="chat-talk" title="Talk to Sabi (hands-free)">🗣</button>
       <button class="cbtn send" title="Send">➤</button>
     </form>`;
   const { messages } = await api("/api/chat");
@@ -808,6 +810,24 @@ To start, send a photo 📷 of your price list, or type your products and prices
     $("#chat-text").value = "";
     chatSend({ image, text: text || null }, text, image);
   };
+  if (window.SabiTalk) {
+    new SabiTalk({
+      button: $("#chat-talk"),
+      send: async blob => ((await chatSend({ audio: await blobToDataUrl(blob) }, "🗣 (talking)")) || [])
+        .filter(m => m.role === "out" && m.body).map(m => m.body),
+      speak: async text => {
+        const token = localStorage.getItem(TOKEN_KEY);
+        const res = await fetch("/api/speak", { method: "POST", body: JSON.stringify({ text: text.slice(0, 4000) }),
+          headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+        return res.ok ? res.blob() : null;
+      },
+      onState: s => {
+        if (s === "unsupported") toast("This browser can't record. Please type.");
+        if (s === "denied") toast("Allow the microphone to talk to Sabi.");
+        if (s === "idle") toast("Talk mode stopped: nobody spoke for a while.");
+      },
+    });
+  }
   const mic = $("#chat-mic");
   let rec = null, chunks = [];
   mic.onclick = async () => {

@@ -129,6 +129,10 @@ class DemoRegistry:
             shutil.rmtree(s.media_dir, ignore_errors=True)
 
 
+class SpeakIn(BaseModel):
+    text: str = Field(max_length=1500)
+
+
 class DemoMessage(BaseModel):
     who: str = Field(pattern="^(owner|customer)$")
     text: str | None = Field(default=None, max_length=1000)
@@ -140,7 +144,7 @@ class DemoMessage(BaseModel):
 
 def _bubble(out, sid):
     return {"to": "owner" if out.to == OWNER else "customer", "body": out.body, "buttons": out.buttons,
-            "image": out.image_url, "template": bool(out.template)}
+            "image": out.image_url, "template": bool(out.template), "voice": out.voice}
 
 
 def _books(store):
@@ -179,6 +183,12 @@ def make_router(registry_ref):
                                                + tips.get("customer", "\"How much for Peak milk? I want 6 tins\", "
                                                           "\"You go do discount if I buy 10 carton?\" "
                                                           "or \"Una dey deliver to Yaba?\"")}]}
+
+    @router.post("/{sid}/speak")
+    async def speak(sid: str, s: SpeakIn):
+        registry_ref().get(sid)          # only for a live demo session
+        from app.api import speech_response
+        return await speech_response(s.text)
 
     @router.post("/{sid}/message")
     async def message(sid: str, m: DemoMessage):

@@ -66,6 +66,10 @@ class Settings:
     # model runs there, else meta. On WhatsApp-compressed test clips Muse Spark Open got every amount
     # right while Voice Transcribe sometimes repeated a word ("five five hundred"), so baseten stays first.
     transcribe_backend: str = _env("TRANSCRIBE_BACKEND")
+    # Sabi's voice. Fallback: Meta's MMS text-to-speech files (scripts/get_voice.py).
+    tts_dir: str = _env("TTS_DIR", "models/mms-tts-eng")
+    tts_engine: str = _env("TTS_ENGINE", "natural")             # "natural" (Nigerian neural voice, MMS fallback) | "mms"
+    tts_voice: str = _env("TTS_VOICE", "en-NG-EzinneNeural")    # or en-NG-AbeoNeural
 
     def has_llm(self) -> bool:
         return bool({"meta": self.model_api_key, "baseten": self.baseten_api_key,

@@ -293,3 +293,5 @@ ul.plain li { margin: 8px 0; }
 .why-steps b { font-size: 14px; }
 .why-steps .wd { color: var(--muted); font-size: 13px; margin-top: 2px; overflow-wrap: anywhere; }
 .load-photo { display: block; border: 1px dashed var(--line); background: none; color: inherit; border-radius: 10px; padding: 10px 12px; margin-bottom: 6px; cursor: pointer; font: inherit; font-size: 13px; }
+.cbtn.talking { background: var(--accent); color: var(--accent-ink); }
+.cbtn[data-state="listening"] { background: var(--bad); color: #fff; animation: pulse 1s ease-in-out infinite; }

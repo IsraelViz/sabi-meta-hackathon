@@ -12,6 +12,9 @@ COPY pyproject.toml ./
 RUN python -c "import tomllib; print('\n'.join(tomllib.load(open('pyproject.toml', 'rb'))['project']['dependencies']))" \
         > requirements.txt \
     && pip install --no-cache-dir -r requirements.txt
+# Sabi's voice (Meta MMS text-to-speech), pinned and checksummed
+COPY scripts/get_voice.py ./scripts/get_voice.py
+RUN python scripts/get_voice.py
 COPY app ./app
 COPY seed ./seed
 COPY web ./web

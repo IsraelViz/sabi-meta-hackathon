@@ -13,6 +13,7 @@ class Outgoing:
     template: dict | None = None    # {"name", "language", "params"}: required outside the 24-hour window
     reminder_id: str | None = None  # set on payment reminders, so a failed send can be recorded
     localized: bool = False         # already in the reader's language (the model's own reply): don't translate
+    voice: bool = False             # also send it as a voice note (they asked to hear Sabi)
 
 
 @dataclass
@@ -38,6 +39,7 @@ class RunContext:
     match_scores: dict = field(default_factory=dict)   # id -> best fuzzy score seen this run
     committed: list = field(default_factory=list)
     tool_log: list = field(default_factory=list)
+    voice_reply: bool = False                 # this reply goes out as a voice note
 
     @property
     def media(self):

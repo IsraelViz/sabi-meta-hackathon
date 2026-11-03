@@ -22,6 +22,7 @@ from app.jobs import daily_summary
 from app.jobs import pilot as pilot_jobs
 from app.ledger import reports
 from app.ledger.seed import add_demo_history, demo_shop_path, demo_store
+from app.media import speech
 from app.media.evidence_store import PrivateMedia
 from app.media.transcribe import shop_words, transcribe
 from app.models.llm import LLMClient
@@ -172,6 +173,14 @@ async def process(msg: whatsapp.Inbound):
         ctx = await asyncio.to_thread(lambda: agent.handle(**kwargs))
         for out in ctx.outbox:
             try:
+                if out.voice and not out.buttons and not out.image_url and not out.template and speech.available():
+                    try:
+                        ogg = await asyncio.to_thread(speech.voice_note, out.body)
+                        await whatsapp.send_voice(out.to, ogg)
+                        if not speech.wants_text_too(out.body):
+                            continue
+                    except Exception:
+                        log.exception("voice note failed; sending text")
                 await whatsapp.send(out.to, out.body, out.buttons, out.image_url, out.template)
             except Exception as e:
                 log.exception("send to %s failed", out.to)

@@ -15,6 +15,9 @@ dependencies = [
     "pillow>=10.4",
     "tzdata>=2024.1",   # zoneinfo has no time zone data on Windows without it
     "pywebpush>=2.0",   # phone notifications for pilot shops
+    "onnxruntime>=1.18",   # Sabi's voice: Meta's MMS text-to-speech (app/media/speech.py)
+    "numpy>=1.26",
+    "edge-tts>=7.0",       # Sabi's natural voice: Nigerian English neural voices
 ]
 
 [project.optional-dependencies]

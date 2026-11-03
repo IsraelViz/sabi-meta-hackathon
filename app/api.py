@@ -410,3 +410,25 @@ def score(request: Request):
 def coach_tips(request: Request):
     from app.ledger import coach
     return {"tips": coach.tips(_store(request), limit=5)}
+
+
+class SpeakIn(BaseModel):
+    text: str = Field(max_length=4000)
+
+
+@router.post("/speak")
+async def speak(s: SpeakIn):
+    """Sabi's voice for talk mode and voice-note replies in the app."""
+    return await speech_response(s.text)
+
+
+async def speech_response(text):
+    import asyncio
+
+    from fastapi.responses import Response
+
+    from app.media import speech
+    if not speech.available():
+        raise HTTPException(503, "Sabi's voice isn't set up here")
+    data, media_type = await asyncio.to_thread(speech.audio, text)
+    return Response(data, media_type=media_type)

@@ -9,7 +9,7 @@ from datetime import date
 from app import money
 from app.money import CURRENCIES
 from app import prefs as shop_prefs
-from app.agent import books, knowledge, onboarding, orders, payments, product_photos, reminders, sales, stocktake
+from app.agent import books, voice, knowledge, onboarding, orders, payments, product_photos, reminders, sales, stocktake
 from app.agent.approvals import CANCEL, CONFIRM, buttons_for, describe, submit
 from app.ledger import reports
 from app.ledger.proposals import KINDS, Item, Proposal
@@ -228,6 +228,10 @@ PRICE_BOOKLIST = _fn(
     "if shown. With no lines, prices the list the shop keeps for that school and class.",
     {"items": _BOOKLIST_LINES, "school": {"type": ["string", "null"]},
      "level": {"type": ["string", "null"], "description": "the class the list is for: Primary 4, JSS1, SS2..."}})
+VOICE = _fn("voice_replies",
+            "They want to hear your answer as a voice note: 'reply with voice', 'send me voice note', 'talk to me'. "
+            "this_once for this answer, always for every answer from now on, off to go back to text.",
+            {"mode": {"type": "string", "enum": ["this_once", "always", "off"]}}, ["mode"])
 SET_OFFERS = _fn("set_offers",
                  "The customer says yes to getting the shop's offers and new arrivals on WhatsApp, or asks to stop them.",
                  {"opt_in": {"type": "boolean"}}, ["opt_in"])
@@ -247,9 +251,9 @@ IDENTIFY_PHOTO = _fn("identify_photo",
 
 OWNER_TOOLS = [FIND_PRODUCT, FIND_CONTACT, RECORD, READ_DOC, BATCH, STOCK_TAKE, PROMO_IDEAS, MAKE_PROMO, LEARN, SHOP_INFO, STATEMENT, SETUP_PHOTO, ADD_PRODUCTS,
                SEND_REMINDER, SET_PHONE, RECENT, REVERSE, REPORT, ASK, SET_PREFS, CHECK_PAYMENT, SCORE, MARKET, SAVE_PHOTO,
-               PRICE_BOOKLIST, CLASS_BOOKS, SAVE_BOOKLIST, TERM_RESTOCK, IDENTIFY_PHOTO]
+               PRICE_BOOKLIST, CLASS_BOOKS, SAVE_BOOKLIST, TERM_RESTOCK, IDENTIFY_PHOTO, VOICE]
 CUSTOMER_TOOLS = [CUST_PRODUCT, MATCH_PHOTO, SEND_PHOTO, CREATE_ORDER, PAYMENT_CLAIM, MY_ORDERS, SHOP_DETAILS, HAND_TO_OWNER,
-                  PRICE_BOOKLIST, CLASS_BOOKS, SET_OFFERS]
+                  PRICE_BOOKLIST, CLASS_BOOKS, SET_OFFERS, VOICE]
 
 
 def _kobo(naira_value):
@@ -580,6 +584,7 @@ OWNER_HANDLERS = {
     "market_prices": market_prices, "save_product_photo": product_photos.save_product_photo,
     "price_booklist": books.price_booklist, "class_books": books.class_books, "save_booklist": books.save_booklist,
     "term_restock": lambda ctx: books.term_restock(ctx), "identify_photo": product_photos.identify_for_owner,
+    "voice_replies": lambda ctx, mode: voice.set_mode(ctx, mode),
 }
 def customer_find_product(ctx, query):
     result = find_product(ctx, query, customer=True)
@@ -598,6 +603,7 @@ CUSTOMER_HANDLERS = {
     "hand_to_owner": sales.hand_to_owner,
     "price_booklist": books.price_booklist, "class_books": books.class_books,
     "set_offers": lambda ctx, opt_in: share.set_offers(ctx, opt_in),
+    "voice_replies": lambda ctx, mode: voice.set_mode(ctx, mode),
 }
 
 

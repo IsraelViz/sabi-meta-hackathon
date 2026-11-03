@@ -55,6 +55,7 @@ function addBubble(who, cls, { body = "", image = null, buttons = [], meta = "" 
   chat.appendChild(el);
   chat.scrollTop = chat.scrollHeight;
   if (who !== currentPanel()) mark(who);
+  return el;
 }
 
 function typing(who, on) {
@@ -72,12 +73,32 @@ function showReplies(data, from) {
   for (const m of data.messages || []) {
     const meta = m.template ? "WhatsApp template (customer hasn't messaged in 24h)"
       : first && m.to === from ? tools : "";
-    addBubble(m.to, "them", { body: m.body, image: m.image, buttons: m.buttons || [], meta });
+    const bubble = addBubble(m.to, "them", { body: m.body, image: m.image, buttons: m.buttons || [], meta });
+    if (m.voice && bubble && !talking[m.to]) voiceNote(bubble, m.body);   // they asked for a voice-note reply
     if (m.to === from) first = false;
   }
   if (data.books) renderBooks(data.books);
   if (typeof data.left === "number" && data.left <= 5) toast(`${data.left} messages left in this demo session.`);
 }
+
+// ---- Sabi's voice: Meta's MMS text-to-speech, made by the server ---------------------
+
+async function speakBlob(text) {
+  const res = await fetch(`/demo/api/${session.id}/speak`, { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: text.slice(0, 1500) }) });
+  return res.ok ? res.blob() : null;
+}
+
+async function voiceNote(bubble, text) {
+  const blob = await speakBlob(text).catch(() => null);
+  if (!blob) return;
+  const a = document.createElement("audio");
+  a.className = "voice-note"; a.controls = true; a.src = URL.createObjectURL(blob);
+  bubble.appendChild(a);
+  a.play().catch(() => {});
+}
+
+const talking = {};
 
 // ---- talking to the server --------------------------------------------------------
 
@@ -89,8 +110,8 @@ async function post(path, body) {
 }
 
 async function send(who, payload) {
-  if (!session) return;
-  if (busy) { toast("One moment, Sabi is still answering."); return; }
+  if (!session) return [];
+  if (busy) { toast("One moment, Sabi is still answering."); return []; }
   busy = true;
   typing(who, true);
   try {
@@ -98,6 +119,7 @@ async function send(who, payload) {
     typing(who, false);
     if (data.heard) addBubble(who, "note", { body: `🎙 Sabi heard: “${data.heard}”` });
     showReplies(data, who);
+    return (data.messages || []).filter(m => m.to === who && m.body).map(m => m.body);
   } catch (e) {
     typing(who, false);
     addBubble(who, "note", { body: e.message });
@@ -118,7 +140,7 @@ async function start() {
     return;
   }
   $("#shop").textContent = `${session.shop} · demo shop with a week of history`;
-  $$(".mic").forEach(b => (b.hidden = !session.voice));   // no transcriber configured: no mic
+  $$(".mic, .talk").forEach(b => (b.hidden = !session.voice));   // no transcriber configured: no mic
   $("#model").textContent = session.model ? `Running on ${session.model}` : "AI model not connected: buttons only";
   renderBooks(session.books, true);
   for (const m of session.intro) addBubble(m.to, "note", { body: m.body });
@@ -192,6 +214,21 @@ for (const [who, phone] of Object.entries(phones)) {
     addBubble(who, "me", { body: text, image });
     send(who, { image, text: text || null });
   };
+
+  const talkBtn = $(".talk", phone);
+  if (talkBtn && window.SabiTalk) {
+    new SabiTalk({
+      button: talkBtn,
+      send: async blob => { addBubble(who, "me", { body: "🗣 (talking)" }); return send(who, { audio: await blobToDataUrl(blob) }); },
+      speak: speakBlob,
+      onState: s => {
+        talking[who] = s !== "off" && s !== "idle";
+        if (s === "unsupported") toast("Talk mode needs a browser with microphone recording.");
+        if (s === "denied") toast("Allow the microphone to talk to Sabi.");
+        if (s === "idle") toast("Talk mode stopped: nobody spoke for a while.");
+      },
+    });
+  }
 
   const mic = $(".mic", phone);
   let rec = null, chunks = [];

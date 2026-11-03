@@ -102,6 +102,20 @@ def build_payload(to, body, buttons=None, image_url=None, template=None):
     return {"messaging_product": "whatsapp", "to": to, "type": "text", "text": {"body": body[:4096]}}
 
 
+async def send_voice(to, ogg: bytes):
+    """Upload the OGG/Opus clip, then send it as a voice note (the play button with a waveform)."""
+    base = f"{GRAPH}/{settings.graph_version}/{settings.wa_phone_number_id}"
+    async with httpx.AsyncClient(timeout=60) as client:
+        up = await client.post(f"{base}/media", headers=_headers(), data={"messaging_product": "whatsapp"},
+                               files={"file": ("sabi.ogg", ogg, "audio/ogg")})
+        up.raise_for_status()
+        r = await client.post(f"{base}/messages", headers=_headers(), json={
+            "messaging_product": "whatsapp", "to": to, "type": "audio",
+            "audio": {"id": up.json()["id"], "voice": True}})
+    r.raise_for_status()
+    return r.json()
+
+
 async def send(to, body, buttons=None, image_url=None, template=None):
     payload = build_payload(to, body, buttons, image_url, template)
     async with httpx.AsyncClient(timeout=30) as client:

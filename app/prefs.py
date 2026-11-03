@@ -18,6 +18,7 @@ DEFAULTS = {
     "currency": "NGN",      # the money her books are kept in (app/money.py): NGN, XOF, GHS, KES...
     "savings": {"percent": 0, "goal_kobo": 0, "name": "Savings"},
     "low_data": False,
+    "voice_replies": False,   # every answer also as a voice note
     "share_score": True,      # show the Sabi Score on the statement she sends a lender
     "share_prices": False,    # add her supplier prices, anonymously, to what other Sabi shops see
 }
@@ -66,7 +67,7 @@ def save(store, changes):
             new[key] = "auto" if v.lower() == "auto" else v[:1].upper() + v[1:]
         elif key == "currency" and isinstance(value, str) and value.strip().upper() in CURRENCIES:
             new[key] = value.strip().upper()
-        elif key in ("low_data", "share_score", "share_prices") and isinstance(value, bool):
+        elif key in ("low_data", "share_score", "share_prices", "voice_replies") and isinstance(value, bool):
             new[key] = value
         elif key.startswith("_"):    # Sabi's own bookkeeping (last summary sent, tips given)
             new[key] = value

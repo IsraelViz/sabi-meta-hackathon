@@ -18,6 +18,7 @@ from app import money
 from app.agent import approvals, language, sales
 from app.agent.context import RunContext
 from app.agent.tools import toolset
+from app.agent import voice
 from app.promo import share
 from app.ledger.model import Contact
 from app.ledger.store import new_id
@@ -223,6 +224,7 @@ class Agent:
         if final and final.strip():
             ctx.say(MARKDOWN_BOLD.sub(r"*\1*", final.strip()))
             ctx.outbox[-1].localized = True     # the model already wrote it in her language
+            ctx.outbox[-1].voice = ctx.voice_reply or voice.always(self.store, ctx)
         if ctx.document_issues:
             self._pending_documents[ctx.sender] = {"document": ctx.document, "arithmetic_issues": ctx.document_issues}
         # Keep history short and text-only; images are not re-sent.
