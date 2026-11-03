@@ -298,3 +298,4 @@ ul.plain li { margin: 8px 0; }
 .login .remember { display: flex; gap: 8px; align-items: center; margin: 0 0 12px; font-size: 14px; }
 .login .remember input { width: auto; margin: 0; accent-color: var(--accent); }
 .login .btn.ghost { background: var(--chip); color: var(--ink); margin-top: 4px; }
+.msg .share-pic { width: auto; margin-top: 8px; padding: 8px 12px; font-size: 14px; background: var(--chip); color: var(--ink); }

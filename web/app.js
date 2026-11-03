@@ -558,22 +558,26 @@ async function posts() {
   for (const img of view.querySelectorAll("img[data-src]")) {
     mediaUrl(img.dataset.src).then(u => img.src = u).catch(() => img.remove());
   }
-  view.querySelectorAll(".share-post").forEach(btn => btn.onclick = async () => {
-    try {
-      const blob = await (await fetch(await mediaUrl(btn.dataset.img))).blob();
-      const file = new File([blob], "sabi-post.jpg", { type: blob.type || "image/jpeg" });
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.clipboard?.writeText(btn.dataset.caption).catch(() => {});
-        await navigator.share({ files: [file], text: btn.dataset.caption });
-        toast("Caption copied too: paste it if the app leaves it out.");
-      } else {
-        const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: "sabi-post.jpg" });
-        a.click();
-        copy(btn.dataset.caption, btn);
-        toast("Picture saved and caption copied. Post it from your gallery.");
-      }
-    } catch (e) { if (e.name !== "AbortError") toast("Couldn't share it. Press and hold the picture to save it."); }
-  });
+  view.querySelectorAll(".share-post").forEach(btn => btn.onclick = () => sharePicture(btn.dataset.img, btn.dataset.caption, btn));
+}
+
+// The flyer and its caption to Instagram, WhatsApp Status or Facebook in one tap: the phone's share sheet
+// lists them. Instagram drops shared text, so the caption is copied for her to paste.
+async function sharePicture(src, caption, btn) {
+  try {
+    const blob = await (await fetch(await mediaUrl(src))).blob();
+    const file = new File([blob], "sabi-post.jpg", { type: blob.type || "image/jpeg" });
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.clipboard?.writeText(caption || "").catch(() => {});
+      await navigator.share({ files: [file], text: caption || "" });
+      toast("Caption copied too: on Instagram, tap the caption box and paste.");
+    } else {
+      const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: "sabi-post.jpg" });
+      a.click();
+      if (caption) copy(caption, btn);
+      toast("Picture saved and caption copied. Open Instagram and post it from your gallery.");
+    }
+  } catch (e) { if (e.name !== "AbortError") toast("Couldn't share it. Press and hold the picture to save it."); }
 }
 
 // ---- sheets: entry detail with its evidence, debtor statement ---------------
@@ -682,8 +686,10 @@ function bubble(m) {
       `<button data-bid="${esc(b.id)}" ${done ? "disabled" : ""}>${esc(b.title)}</button>`).join("")}</div>` : ""}
     <div class="when">${m.at ? new Date(m.at).toLocaleTimeString("en-NG", { hour: "numeric", minute: "2-digit" }) : ""}
       ${m.role === "out" && m.body && "speechSynthesis" in window ? `<button class="flag" data-say title="Read it out">🔊</button>` : ""}
-      ${m.role === "out" ? `<button class="flag" data-flag="${m.id}" title="Something wrong with this reply?">👎</button>` : ""}</div>`;
+      ${m.role === "out" ? `<button class="flag" data-flag="${m.id}" title="Something wrong with this reply?">👎</button>` : ""}</div>
+    ${m.role === "out" && m.image ? `<button class="btn ghost share-pic" type="button">Share to Instagram / Status ↗</button>` : ""}`;
   el.querySelector("[data-say]")?.addEventListener("click", () => say(m.body));
+  el.querySelector(".share-pic")?.addEventListener("click", ev => sharePicture(m.image, captionOf(m.body), ev.currentTarget));
   el.querySelector(".load-photo")?.addEventListener("click", ev => {
     ev.currentTarget.outerHTML = `<img alt="" src="${esc(ev.currentTarget.dataset.src)}">`;
   });
@@ -711,6 +717,13 @@ function say(text) {
   if (u.voice) u.lang = u.voice.lang;
   u.rate = 0.95;
   synth.speak(u);
+}
+
+// The flyer message holds the caption between the "Why:" line and the "Post to …?" question.
+function captionOf(body) {
+  const text = body || "";
+  const m = text.match(/Why:[^\n]*\n\n([\s\S]*?)\n\nPost to /);
+  return (m ? m[1] : text).trim();
 }
 
 function showMessages(list) {
@@ -985,7 +998,7 @@ async function route() {
       if (err instanceof AuthError) return signedOut();
     }
     $("#chat-tab").hidden = !ME?.chat;
-    $("#posts-tab").hidden = !!ME?.chat;   // pilot shops have no Instagram connected
+    // Every shop sees its posts; shops without Instagram connected share them from there in one tap.
     if (ME?.shop) setShop(ME.shop);
     if (ME?.chat) welcome();
   }
