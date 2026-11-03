@@ -32,6 +32,29 @@ WEB_DIR = Path(__file__).resolve().parents[1] / "web"
 private_media = PrivateMedia(settings.private_media_dir)
 
 
+def load_shop_once(path):
+    """First run on Postgres: the shop and its history in one transaction, on its own connection.
+    All or nothing, so a restart halfway (a far-away database makes this take minutes) leaves the
+    database empty and the next start tries again. It runs in the background so the server answers
+    meanwhile and the host doesn't restart it for being slow."""
+    from app.ledger.pg_store import PostgresStore
+    from app.promo.publish import LocalMedia
+
+    seed = PostgresStore(settings.database_url)
+    try:
+        with seed.conn.transaction():
+            if not seed.is_empty():   # another instance got there first
+                return
+            demo_store(store=seed, path=path)
+            if settings.demo_history:
+                add_demo_history(seed, path, media=LocalMedia())
+        log.info("loaded %s into the database", Path(path).name)
+    except Exception:
+        log.exception("loading the shop failed; it will be tried again on the next start")
+    finally:
+        seed.conn.close()
+
+
 def make_store():
     shop = {"path": settings.shop_file or demo_shop_path()}
     if settings.store == "memory":
@@ -50,10 +73,8 @@ def make_store():
         from app.media import durable
         durable.start(settings.database_url)     # pictures and voice notes outlive a host that wipes its disk
         if pg.is_empty():   # first run: load the shop file, or the demo shop
-            demo_store(store=pg, **shop)
-            if settings.demo_history:
-                from app.promo.publish import LocalMedia
-                add_demo_history(pg, shop["path"], media=LocalMedia())
+            import threading
+            threading.Thread(target=load_shop_once, args=(shop["path"],), daemon=True).start()
         return pg
     raise RuntimeError(f"STORE must be 'memory' or 'postgres', not {settings.store!r}")
 

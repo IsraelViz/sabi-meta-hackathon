@@ -128,3 +128,27 @@ def test_customer_sends_a_booklist_photo_and_gets_one_priced_answer(shop):
     result = tool_results(llm)[0]
     assert result["ready"] == 1 and result["total_for_what_we_have"] == "₦6,800"
     assert ctx.outbox[-1].body.startswith("Your list")
+
+
+def test_first_start_on_postgres_loads_the_whole_shop_or_nothing(pg_url, monkeypatch):
+    from app import main
+    from app.ledger import bookshop_week
+    from app.ledger.pg_store import PostgresStore
+
+    pg = PostgresStore(pg_url)
+    pg.conn.execute("drop schema if exists public cascade; create schema public;")
+    pg.apply_schema()
+    monkeypatch.setattr(main, "settings", type("S", (), {"database_url": pg_url, "demo_history": True})())
+
+    def broken(store, today=None, media=None):
+        store.commit  # noqa: B018
+        raise RuntimeError("restarted halfway")
+    monkeypatch.setattr(bookshop_week, "add_history", broken)
+    main.load_shop_once(DEMO_SHOPS["bookshop"])
+    assert pg.is_empty()                                  # nothing half-loaded
+
+    monkeypatch.undo()
+    monkeypatch.setattr(main, "settings", type("S", (), {"database_url": pg_url, "demo_history": True})())
+    main.load_shop_once(DEMO_SHOPS["bookshop"])
+    assert pg.stock_on_hand("b-civic-jss1") == 0 and len(pg.list_entries()) == 22
+    pg.conn.close()
