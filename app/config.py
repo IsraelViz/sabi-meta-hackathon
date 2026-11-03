@@ -98,6 +98,10 @@ class Settings:
     # Pilot shops: real testers, each with her own books, chat in the app and a customer chat link.
     # A Postgres URL, or "pgserver:<folder>" for an embedded Postgres kept in that folder. Empty = off.
     shops_db: str = _env("SHOPS_DB")
+    # Judges' demo account: the demo bookshop as an app shop, signed into with this phone and PIN.
+    # The phone is shown masked on the sign-in pages; a button signs judges in. Empty PIN = no demo account.
+    demo_login_phone: str = _env("DEMO_LOGIN_PHONE")          # default: OWNER_PHONE
+    demo_login_pin: str = _env("DEMO_LOGIN_PIN", "2026")
     admin_token: str = _env("ADMIN_TOKEN")             # /admin/ (create shops, read chats); default: OWNER_APP_TOKEN
     shop_daily_messages: int = int(_env("SHOP_DAILY_MESSAGES", "400"))   # per shop, owner and customers together
     auto_post_limit_kobo: int = int(_env("AUTO_POST_LIMIT_NAIRA", "50000")) * 100

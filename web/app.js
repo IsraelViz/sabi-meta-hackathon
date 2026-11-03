@@ -806,7 +806,18 @@ async function chat() {
       <button class="cbtn send" title="Send">➤</button>
     </form>`;
   const { messages } = await api("/api/chat");
-  if (!messages.length) {
+  const products = messages.length ? [] : await api("/api/products").catch(() => []);
+  if (!messages.length && products.length) {
+    // A shop that already has its books (the demo shop, or one set up at sign-up): try it, don't set it up.
+    const first = products.find(p => p.stock > 0) || products[0];
+    const tries = [`I sold 2 ${first.name}, cash`, "Who owes me?", "How much profit this week?",
+      ...(ME?.kind === "books" ? ["What should I order before resumption?"] : ["What is running low?"])];
+    $("#log").innerHTML = `<div class="chat-empty">
+      <div class="msg them"><div class="body">Hello 👋 I'm Sabi, the bookkeeper and sales assistant for ${esc(ME?.shop || "your shop")}.
+Your ${products.length} products are in the books already. Tell me what you sold or bought, ask how the business is doing, or tap 🗣 and just talk to me.</div></div>
+      <div class="starters">${tries.map(s => `<button type="button">${esc(s)}</button>`).join("")}</div></div>`;
+    $("#log").querySelectorAll(".starters button").forEach(b => b.onclick = () => { $("#chat-text").value = b.textContent; $("#chat-text").focus(); });
+  } else if (!messages.length) {
     $("#log").innerHTML = `<div class="chat-empty">
       <div class="msg them"><div class="body">Hello 👋 I'm Sabi, the bookkeeper and sales assistant for ${esc(ME?.shop || "your shop")}.
 Tell me what you sell, sold or bought, the way you'd say it: type it or send a voice note 🎙, in English, Pidgin, Yoruba, Igbo, Hausa, French or any language you speak.
@@ -953,6 +964,11 @@ function login(message) {
     <div class="err" id="in-err">${message ? esc(message) : ""}</div>
     <button class="btn" id="go">Sign in</button>
     <p class="note" style="text-align:center">New to Sabi? <a href="/join/">Create your shop</a> · <a href="#" id="use-key">I have an app key</a></p>
+    <div class="judge-box" id="judge-box" hidden>
+      <b>Judging Sabi? Try the demo shop</b>
+      <span>Phone <code id="judge-phone"></code> · PIN <code id="judge-pin"></code></span>
+      <button class="btn ghost" id="judge-go">Open the demo shop</button>
+    </div>
     <div id="key-box" hidden>
       <label for="key">App key</label>
       <input id="key" type="password" autocomplete="off" autocapitalize="off">
@@ -971,6 +987,20 @@ function login(message) {
   $("#go").onclick = signIn;
   $("#in-secret").onkeydown = e => e.key === "Enter" && signIn();
   $("#use-key").onclick = e => { e.preventDefault(); $("#key-box").hidden = false; $("#key").focus(); };
+  fetch("/join/api/demo").then(r => r.json()).then(d => {
+    if (!d.available) return;
+    $("#judge-box").hidden = false;
+    $("#judge-phone").textContent = d.phone; $("#judge-pin").textContent = d.pin;
+  }).catch(() => {});
+  $("#judge-go").onclick = async () => {
+    $("#judge-go").disabled = true;
+    try {
+      const res = await fetch("/join/api/demo", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Couldn't open the demo shop.");
+      localStorage.setItem(TOKEN_KEY, data.token); ME = null; location.hash = "#/chat"; route();
+    } catch (e) { $("#in-err").textContent = e.message; $("#judge-go").disabled = false; }
+  };
   $("#go-key").onclick = () => { localStorage.setItem(TOKEN_KEY, $("#key").value.trim()); ME = null; route(); };
 }
 

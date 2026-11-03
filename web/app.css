@@ -82,13 +82,13 @@ main { max-width: 640px; margin: 0 auto; padding: var(--gutter); }
 
 .tabs {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 5;
-  display: grid; grid-template-columns: repeat(6, 1fr);
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;   /* one row, however many tabs show */
   background: var(--card); border-top: 1px solid var(--line);
   padding-bottom: env(safe-area-inset-bottom);
 }
 .tabs a {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
-  padding: 8px 0 10px; color: var(--muted); text-decoration: none; font-size: 12px;
+  padding: 8px 0 10px; color: var(--muted); text-decoration: none; font-size: 11.5px; min-width: 0;
 }
 .tabs a .ti { font-size: 18px; line-height: 1.2; }
 .tabs a.on { color: var(--accent); font-weight: 600; }
@@ -299,3 +299,6 @@ ul.plain li { margin: 8px 0; }
 .login .remember input { width: auto; margin: 0; accent-color: var(--accent); }
 .login .btn.ghost { background: var(--chip); color: var(--ink); margin-top: 4px; }
 .msg .share-pic { width: auto; margin-top: 8px; padding: 8px 12px; font-size: 14px; background: var(--chip); color: var(--ink); }
+.judge-box { background: var(--chip); border-radius: 14px; padding: 12px; margin-top: 14px; display: grid; gap: 6px; }
+.judge-box span { color: var(--muted); font-size: 14px; } .judge-box code { color: var(--ink); font-weight: 700; }
+.judge-box .btn.ghost { background: var(--accent); color: var(--accent-ink); }

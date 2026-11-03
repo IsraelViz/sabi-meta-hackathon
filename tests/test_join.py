@@ -44,7 +44,8 @@ def test_she_signs_up_and_lands_in_her_own_shop(shops):  # noqa: F811
     assert business["payment_details"].startswith("Transfer to DEMO BANK")
     row = shops.db.execute("select owner_phone, pin_hash, consent_at from pilot.shops").fetchone()
     assert row["owner_phone"] == "2348031234567" and row["consent_at"] is not None
-    assert "4826" not in row["pin_hash"] and row["pin_hash"].startswith("scrypt$")
+    assert row["pin_hash"].startswith("scrypt$") and row["pin_hash"].split("$")[2] != "4826"   # only the hash is kept
+    assert accounts.verify_secret("4826", row["pin_hash"]) and not accounts.verify_secret("4827", row["pin_hash"])
     # The same number can't make a second shop
     assert c.post("/join/api/register", json=IFE).status_code == 409
     assert c.get("/join/api/phone", params={"phone": "08031234567"}).json() == {"valid": True, "taken": True}
@@ -94,3 +95,35 @@ def test_deleting_her_shop_ends_every_session(shops):  # noqa: F811
     assert c.request("DELETE", "/api/shop", headers=bearer(token), json={}).status_code == 200
     assert c.get("/api/me", headers=bearer(token)).status_code == 401
     assert c.post("/join/api/register", json=IFE).status_code == 200            # the number is free again
+
+
+# --- the judges' demo shop --------------------------------------------------------------
+
+def test_judges_open_the_demo_shop_in_one_tap_and_never_see_the_full_number(shops, monkeypatch):  # noqa: F811
+    import dataclasses
+
+    from app import judge
+    from app.config import settings
+    monkeypatch.setattr(pilot, "settings", dataclasses.replace(settings, demo_login_phone="2347015065065",
+                                                               demo_login_pin="2026"))
+    c = app_for(shops)
+    assert c.get("/join/api/demo").json()["available"] is False          # not made yet
+    judge._create(shops, "2347015065065", "2026")                          # what start-up does, in the background
+    info = c.get("/join/api/demo").json()
+    assert info == {"available": True, "phone": "0701 XXXX 065", "pin": "2026"}
+    assert "7015065065" not in c.get("/join/api/demo").text
+    token = c.post("/join/api/demo").json()["token"]
+    me = c.get("/api/me", headers=bearer(token)).json()
+    assert me["shop"] == "Nkechi Books & Stationery" and me["chat"]
+    products = c.get("/api/products", headers=bearer(token)).json()
+    assert any(p["name"] == "New General Mathematics JSS1" for p in products)
+    # Nobody can register a shop with the owner's number
+    assert c.post("/join/api/register", json={**IFE, "phone": "07015065065"}).status_code == 409
+    # Start-up again: no second shop, PIN kept to the setting
+    judge.ensure(shops, "2347015065065", "2026")
+    assert shops.db.execute("select count(*) as n from pilot.shops where owner_phone = '2347015065065'").fetchone()["n"] == 1
+
+
+def test_masked_numbers():
+    from app.judge import masked
+    assert masked("2347015065065") == "0701 XXXX 065" and masked("447911123456") == "4479 XXXX 456"

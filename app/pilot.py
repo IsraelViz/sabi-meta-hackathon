@@ -286,6 +286,30 @@ def join_router():
         return {"token": token, "expires_at": expires.isoformat(), "shop": row["name"],
                 "chat_url": f"{base}/c/{row['slug']}"}
 
+    def demo_phone():
+        return settings.demo_login_phone or settings.owner_phone
+
+    @router.get("/demo")
+    def demo_info(request: Request):
+        """For the judges' box on the sign-in pages: the number masked, never in full."""
+        from app import judge
+        ready = bool(settings.demo_login_pin and demo_phone() and judge.find(_shops(request), demo_phone()))
+        return {"available": ready, "phone": judge.masked(demo_phone()) if ready else None,
+                "pin": settings.demo_login_pin if ready else None}
+
+    @router.post("/demo")
+    def demo_login(request: Request):
+        """One tap for judges: signs in to the demo shop without the page ever holding the full number."""
+        limit(request, "login", 20, 900)
+        if not settings.demo_login_pin or not demo_phone():
+            raise HTTPException(404, "there is no demo account here")
+        try:
+            sid, token, expires = _shops(request).accounts.login(
+                demo_phone(), settings.demo_login_pin, False, device_name(request.headers.get("user-agent")))
+        except AuthError:
+            raise HTTPException(503, "The demo shop is still being set up. Try again in a few minutes.")
+        return {"token": token, "expires_at": expires.isoformat(), "shop": _shops(request).row(sid)["name"]}
+
     @router.post("/login")
     def login(body: Login, request: Request):
         limit(request, "login", 20, 900)

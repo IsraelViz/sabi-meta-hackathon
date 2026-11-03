@@ -75,6 +75,10 @@
     .seg button.on { background: var(--card); box-shadow: var(--shadow); font-weight: 600; }
     .meter { height: 5px; border-radius: 9px; background: var(--line); margin-top: 8px; overflow: hidden; }
     .meter i { display: block; height: 100%; width: 0; background: var(--bad); transition: width .2s, background .2s; }
+    .judge { background: var(--chip); border-radius: 14px; padding: 14px; margin: 0 0 18px; display: grid; gap: 8px; }
+    .judge span { color: var(--muted); font-size: 14px; }
+    .judge code { color: var(--ink); font-weight: 700; }
+    .judge-link { display: block; text-align: center; margin: -6px 0 14px; font-size: 14px; }
     .done { text-align: center; }
     .done .big { font-size: 48px; }
     .spinner { width: 28px; height: 28px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%;
@@ -88,6 +92,7 @@
 <main>
   <div class="brand"><div class="logo">S</div><div><b>Sabi</b><small>Your shop's bookkeeper and sales assistant, on WhatsApp</small></div></div>
 
+  <a href="#signin" class="judge-link" id="judge-link" hidden>Judging Sabi? Open the demo shop in one tap →</a>
   <div class="tabs" role="tablist">
     <button class="on" data-tab="join" role="tab">Create my shop</button>
     <button data-tab="signin" role="tab">Sign in</button>
@@ -187,6 +192,11 @@
 
   <!-- ===================== sign in ===================== -->
   <section id="signin" class="card" hidden>
+    <div class="judge" id="judge" hidden>
+      <b>Judging Sabi? Try the demo shop</b>
+      <span>Nkechi Books &amp; Stationery, with real history. Phone <code id="judge-phone"></code> · PIN <code id="judge-pin"></code></span>
+      <button type="button" class="btn" id="judge-go">Open the demo shop</button>
+    </div>
     <h1>Welcome back</h1>
     <p class="lead">Sign in with your phone number and your PIN or password.</p>
     <label class="field"><span>Your phone number</span>
@@ -391,6 +401,22 @@ async function create() {
   $("#done-text").textContent = "Opening your shop…";
   location.replace("/app/#/chat");
 }
+
+// ---- the judges' demo shop: the number is shown masked; the button signs in for them ----
+fetch("/join/api/demo").then(r => r.json()).then(d => {
+  if (!d.available) return;
+  $("#judge").hidden = false; $("#judge-link").hidden = false;
+  $("#judge-phone").textContent = d.phone; $("#judge-pin").textContent = d.pin;
+}).catch(() => {});
+$("#judge-link").onclick = e => { e.preventDefault(); tab("signin"); };
+$("#judge-go").onclick = async () => {
+  $("#judge-go").disabled = true;
+  try {
+    const r = await post("/join/api/demo", {});
+    try { localStorage.setItem(TOKEN_KEY, r.token); } catch {}
+    location.replace("/app/#/chat");
+  } catch (e) { $("#in-err").textContent = e.message; $("#judge-go").disabled = false; }
+};
 
 // ---- sign in ----
 $("#in-go").onclick = async () => {
