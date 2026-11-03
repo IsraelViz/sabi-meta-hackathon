@@ -126,6 +126,13 @@ def owner_router(require_owner):
         shop.base_url = settings.public_base_url or str(request.base_url).rstrip("/")
         return shop
 
+    @router.post("/logout")
+    def logout(request: Request):
+        """Sign this device out. Her other devices, and her shop key, keep working."""
+        token = request.headers.get("authorization", "").removeprefix("Bearer ").strip()
+        _shops(request).accounts.logout(token)
+        return {"ok": True}
+
     @router.get("/chat")
     def chat_history(request: Request, after: int = 0):
         shop = shop_of(request)
@@ -198,6 +205,120 @@ def owner_router(require_owner):
 
 
 # --- her customers' chat link ----------------------------------------------------------
+
+def join_router():
+    """The public sign-up and sign-in pages' API. No code is needed to join; limits per address and per
+    day keep it from being abused, and each shop has its own daily message cap."""
+    from app.accounts import AuthError, check_secret, device_name
+    from app.agent.tools import normalize_phone
+
+    router = APIRouter(prefix="/join/api")
+    attempts: dict[str, deque] = defaultdict(deque)
+
+    def limit(request, what, most, per):
+        ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "?")
+        q, t = attempts[f"{what}:{ip}"], time.time()
+        while q and t - q[0] > per:
+            q.popleft()
+        if len(q) >= most:
+            raise HTTPException(429, "Too many tries from here. Please wait a little and try again.")
+        q.append(t)
+        day = attempts[f"{what}:all"]
+        while day and t - day[0] > 86400:
+            day.popleft()
+        if what == "register" and len(day) >= JOINS_PER_DAY:
+            raise HTTPException(429, "Sabi has had a lot of new shops today. Please try again tomorrow.")
+        day.append(t)
+
+    def phone_of(raw):
+        phone = normalize_phone(raw or "")
+        if not phone:
+            raise HTTPException(422, "That phone number doesn't look right. Use the one on your WhatsApp, e.g. 0803 123 4567.")
+        return phone
+
+    class Join(BaseModel):
+        shop_name: str = Field(min_length=2, max_length=60)
+        kind: str = Field(default="shop", pattern="^(shop|online|books)$")
+        owner_name: str = Field(min_length=1, max_length=60)
+        phone: str = Field(max_length=20)            # checked below, so she gets plain words
+        secret: str = Field(max_length=72)
+        remember: bool = True
+        consent: bool
+        address: str = Field(default="", max_length=200)
+        hours: str = Field(default="", max_length=200)
+        delivery: str = Field(default="", max_length=300)
+        payment: str = Field(default="", max_length=300)
+        returns: str = Field(default="", max_length=200)
+        about: str = Field(default="", max_length=400)
+        instagram: str = Field(default="", max_length=100)
+        facebook: str = Field(default="", max_length=200)
+        website: str = Field(default="", max_length=200)
+
+    class Login(BaseModel):
+        phone: str = Field(max_length=20)
+        secret: str = Field(max_length=72)
+        remember: bool = True
+
+    @router.get("/phone")
+    def phone_check(phone: str, request: Request):
+        limit(request, "check", 30, 600)
+        p = normalize_phone(phone or "")
+        return {"valid": bool(p), "taken": bool(p) and _shops(request).accounts.phone_taken(p)}
+
+    @router.post("/register")
+    def register(j: Join, request: Request):
+        if not j.consent:
+            raise HTTPException(422, "Please tick that you agree to how Sabi keeps your shop's data.")
+        problem = check_secret(j.secret)
+        if problem:
+            raise HTTPException(422, f"PIN or password: {problem}.")
+        phone = phone_of(j.phone)
+        shops = _shops(request)
+        if shops.accounts.phone_taken(phone):
+            raise HTTPException(409, "This number already has a Sabi shop. Sign in instead.")
+        limit(request, "register", 5, 86400)
+        row = shops.register(j.shop_name, j.kind, j.owner_name, phone, j.secret,
+                             shop_info=shop_info_text(j), payment_details=j.payment.strip(),
+                             links={"instagram": j.instagram.strip(), "facebook": j.facebook.strip(),
+                                    "website": j.website.strip()})
+        token, expires = shops.accounts.start_session(row["id"], j.remember, device_name(request.headers.get("user-agent")))
+        base = settings.public_base_url or str(request.base_url).rstrip("/")
+        return {"token": token, "expires_at": expires.isoformat(), "shop": row["name"],
+                "chat_url": f"{base}/c/{row['slug']}"}
+
+    @router.post("/login")
+    def login(body: Login, request: Request):
+        limit(request, "login", 20, 900)
+        try:
+            sid, token, expires = _shops(request).accounts.login(
+                phone_of(body.phone), body.secret, body.remember, device_name(request.headers.get("user-agent")))
+        except AuthError as e:
+            raise HTTPException(401, str(e))
+        return {"token": token, "expires_at": expires.isoformat(), "shop": _shops(request).row(sid)["name"]}
+
+    return router
+
+
+JOINS_PER_DAY = 200
+
+
+def shop_info_text(j):
+    """What customers are told, from her answers, in plain sentences she can edit later in Shop ⚙."""
+    parts = []
+    if j.about.strip():
+        parts.append(j.about.strip().rstrip(".") + ".")
+    if j.address.strip():
+        parts.append(f"We are at {j.address.strip().rstrip('.')}.")
+    if j.hours.strip():
+        parts.append(f"Open {j.hours.strip().rstrip('.')}.")
+    if j.delivery.strip():
+        parts.append(f"Delivery: {j.delivery.strip().rstrip('.')}.")
+    if j.payment.strip():
+        parts.append(f"Payment: {j.payment.strip().rstrip('.')}.")
+    if j.returns.strip():
+        parts.append(f"Returns: {j.returns.strip().rstrip('.')}.")
+    return " ".join(parts)
+
 
 def customer_router():
     router = APIRouter()

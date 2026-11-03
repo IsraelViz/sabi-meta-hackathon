@@ -295,3 +295,6 @@ ul.plain li { margin: 8px 0; }
 .load-photo { display: block; border: 1px dashed var(--line); background: none; color: inherit; border-radius: 10px; padding: 10px 12px; margin-bottom: 6px; cursor: pointer; font: inherit; font-size: 13px; }
 .cbtn.talking { background: var(--accent); color: var(--accent-ink); }
 .cbtn[data-state="listening"] { background: var(--bad); color: #fff; animation: pulse 1s ease-in-out infinite; }
+.login .remember { display: flex; gap: 8px; align-items: center; margin: 0 0 12px; font-size: 14px; }
+.login .remember input { width: auto; margin: 0; accent-color: var(--accent); }
+.login .btn.ghost { background: var(--chip); color: var(--ink); margin-top: 4px; }

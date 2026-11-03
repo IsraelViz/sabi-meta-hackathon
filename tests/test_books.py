@@ -152,3 +152,35 @@ def test_first_start_on_postgres_loads_the_whole_shop_or_nothing(pg_url, monkeyp
     main.load_shop_once(DEMO_SHOPS["bookshop"])
     assert pg.stock_on_hand("b-civic-jss1") == 0 and len(pg.list_entries()) == 22
     pg.conn.close()
+
+
+def test_a_new_bookshop_set_up_from_plain_names_still_keeps_classes_apart():
+    from app.ledger.model import Product
+    from app.ledger.seed import chart_of_accounts
+    from app.ledger.store import MemoryStore
+
+    store = MemoryStore(chart_of_accounts())
+    for pid, name in (("m1", "Mathematics JSS1"), ("m2", "Mathematics JSS2"), ("e1", "English Studies JSS1")):
+        store.add_product(Product(id=pid, name=name, base_unit="copy", sell_price_kobo=500_000))
+    r = books.price_booklist(ctx_for(store), level="JSS2", items=[{"title": "Mathematics"}, {"title": "English Studies"}])
+    got = {l["asked"]: (l.get("product_id"), l["status"]) for l in r["lines"]}
+    assert got["Mathematics"][0] == "m2"
+    assert got["English Studies"][0] is None and "only for JSS1" in r["lines"][1]["note"]
+    assert [b["product_id"] for b in books.class_books(ctx_for(store), "JSS 1")["books"]] == ["m1", "e1"]
+
+
+def test_two_editions_added_from_a_price_list_are_linked_newest_first():
+    from app.ledger.model import Product
+    from app.ledger.seed import chart_of_accounts
+    from app.ledger.store import MemoryStore
+
+    store = MemoryStore(chart_of_accounts())
+    for pid, ed in (("old", "2014 edition"), ("new", "2023 edition")):
+        store.add_product(Product(id=pid, name=f"New General Mathematics JSS2 ({ed})", base_unit="copy",
+                                  sell_price_kobo=500_000, details={"title": "New General Mathematics", "edition": ed,
+                                                                    "level": "JSS2", "category": "textbook"}))
+    assert books.link_editions(store) == 1
+    assert store.get_product("old").details["replaced_by"] == "new"
+    # no stock recorded yet: every tool says the same thing about it
+    assert books.class_books(ctx_for(store), "JSS2")["books"][0]["in_stock"] is True
+    assert find_product(ctx_for(store, "customer"), "New General Mathematics JSS2", customer=True)["matches"][0]["in_stock"] is True

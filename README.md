@@ -175,6 +175,16 @@ The demo shop is Nkechi Books & Stationery in Ogba, Lagos (`DEMO_SHOP=bookshop`;
 - **Before resumption** (`term_restock`): Sabi works out when schools next resume (usually mid-September, mid-January and late April). For each title it counts what she sold in the last resumption rush, adds what parents asked for that she didn't have, and gives the order quantity and an order-by date three weeks ahead. It also lists old-edition copies to clear rather than reorder. The second- and third-term shares of a September rush are stated as assumptions.
 - What parents asked for and couldn't get goes into her summary as before ("Agricultural Science JSS1 ×3").
 
+## Joining Sabi (`/join/`, `app/accounts.py`)
+
+A shop owner creates her shop herself at `/join/`, in four short steps, with no code or invite:
+1. Her shop's name, what she sells (guessed from the name: "Ife's Book Corner" picks Books), her name and WhatsApp number. The number is checked as she types, and if it already has a shop she is offered Sign in.
+2. What customers should know: address, hours, delivery, payment, returns. Quick-answer chips fill common replies, and a live preview shows what Sabi will tell customers.
+3. Her products: a price-list photo, or a few typed lines. Right after sign-up Sabi reads them and drafts the list for her to approve with one tap.
+4. A PIN (4–8 digits) or a password, "keep me signed in on this device", and her consent.
+
+She signs in with her phone number and PIN on any device, at `/join/#signin` or the app's sign-in screen. PINs are stored only as salted scrypt hashes. Five wrong tries lock sign-in for 15 minutes. Each device gets its own session: 180 days with "keep me signed in", 12 hours without. Signing out ends only that device. Deleting her shop ends them all and frees the number. Abuse is limited without a code: 5 sign-ups per address a day, 200 a day in total, and each shop's own daily message cap. Shop keys from `/admin/` still work.
+
 ## Selling to customers (`app/agent/sales.py`, `orders.py`)
 
 Customers message the shop's WhatsApp number, and Sabi answers straight away, in their language, with the shop's real prices and stock. Nobody waits for the owner to see the message before getting a reply.
@@ -255,7 +265,7 @@ python scripts/dev_server.py      # then open http://127.0.0.1:8000/app/
 
 ## Status
 
-Working and tested (399 tests), with the owner app also checked by hand at phone size in light and dark mode: the ledger and its database triggers, the Postgres and memory stores, the validator, posting and reversals, the amount normaliser, the agent with both personas, owner approvals, customer orders and payment claims, sales leads, handoff to the owner and follow-ups, learning the shop from its pages, the business statement and its signed links, the credit guard, restock alerts, setting up from a photo, receipts and notebook pages, the stock-take, the promotion loop, payment reminders, the public two-phone demo, WhatsApp parsing and sending, the daily and weekly summaries at her chosen time, the coach and its follow-ups, the Sabi Score, the payment alert check, the "Why?" trail, savings, shared prices, notifications, the results page, other languages (detection, French-style amounts, translation with the number check), other currencies, shopping by picture, and the bookshop (booklists, classes and editions, covers, the school year).
+Working and tested (407 tests), with the owner app also checked by hand at phone size in light and dark mode: the ledger and its database triggers, the Postgres and memory stores, the validator, posting and reversals, the amount normaliser, the agent with both personas, owner approvals, customer orders and payment claims, sales leads, handoff to the owner and follow-ups, learning the shop from its pages, the business statement and its signed links, the credit guard, restock alerts, setting up from a photo, receipts and notebook pages, the stock-take, the promotion loop, payment reminders, the public two-phone demo, WhatsApp parsing and sending, the daily and weekly summaries at her chosen time, the coach and its follow-ups, the Sabi Score, the payment alert check, the "Why?" trail, savings, shared prices, notifications, the results page, other languages (detection, French-style amounts, translation with the number check), other currencies, shopping by picture, and the bookshop (booklists, classes and editions, covers, the school year).
 
 New features run live on Baseten:
 - **Credit guard:** caught Mama Tunde (₦54,000 owed, 2 days late) before more credit was given.

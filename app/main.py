@@ -207,6 +207,8 @@ if shops:
     app.include_router(pilot.owner_router(require_owner))
     app.include_router(pilot.customer_router())
     app.include_router(pilot.admin_router())
+    app.include_router(pilot.join_router())
+    app.mount("/join", StaticFiles(directory=WEB_DIR / "join", html=True), name="join")
     app.mount("/chat", StaticFiles(directory=WEB_DIR / "chat"), name="customer-chat")
     app.mount("/admin", StaticFiles(directory=WEB_DIR / "admin", html=True), name="admin")
 app.mount("/app", StaticFiles(directory=WEB_DIR, html=True), name="owner-app")

@@ -97,7 +97,12 @@ def score(query, p):
 
 
 def is_book(p):
-    return bool((p.details or {}).get("title"))
+    """A book: has book details, or its name says a class ("Basic Science JSS2" from a price-list photo)."""
+    return bool((p.details or {}).get("title")) or bool(level_of(p.name))
+
+
+def level_for(p):
+    return (p.details or {}).get("level") or level_of(p.name)
 
 
 def names(p):
@@ -119,6 +124,33 @@ def _available(store, p):
     return store.stock_on_hand(p.id) - store.reserved(p.id)
 
 
+def _in_stock(store, p):
+    """As find_product says it: some left, or a product she never put stock in for (we can't tell)."""
+    return _available(store, p) > 0 or not reports.tracks_stock(store, p.id)
+
+
+def link_editions(store):
+    """Same title and class in two editions: the older one points to the newest (replaced_by), so Sabi
+    can say "most schools now use the newer one". Editions are compared by the year or number in them."""
+    groups = {}
+    for p in _books(store):
+        d = p.details or {}
+        if d.get("title") and d.get("edition"):
+            groups.setdefault((d["title"].lower(), level_for(p)), []).append(p)
+    linked = 0
+    for group in groups.values():
+        dated = [(max(map(int, re.findall(r"\d+", p.details["edition"])), default=-1), p) for p in group]
+        dated = [(n, p) for n, p in dated if n >= 0]
+        if len(dated) < 2:
+            continue
+        newest = max(dated, key=lambda x: x[0])[1]
+        for n, p in dated:
+            if p.id != newest.id and not p.details.get("replaced_by"):
+                store.set_product_details(p.id, {**p.details, "replaced_by": newest.id})
+                linked += 1
+    return linked
+
+
 def facts(store, p, customer=False):
     """Book facts for a find_product row; nothing for other products."""
     d = p.details or {}
@@ -129,7 +161,7 @@ def facts(store, p, customer=False):
     if newer:
         row["old_edition"] = True
         row["newer_edition"] = {"product_id": newer.id, "name": newer.name, "edition": (newer.details or {}).get("edition"),
-                                "price": naira(newer.sell_price_kobo), "in_stock": _available(store, newer) > 0}
+                                "price": naira(newer.sell_price_kobo), "in_stock": _in_stock(store, newer)}
         row["note"] = ("This is an old edition. Most schools now use the newer one: tell them, and let them check "
                        "with the school before buying this one.")
     return row
@@ -172,11 +204,12 @@ def match_line(store, title, level=None, author=None, edition=None):
     if author:   # the author settles a tie between two titles
         scored = sorted(scored, key=lambda x: x[0] + 0.05 * similarity(author, (x[1].details or {}).get("author") or ""),
                         reverse=True)
-    at_level = [(s, p) for s, p in scored if not level or not (p.details or {}).get("level") or p.details["level"] == level]
+    at_level = [(s, p) for s, p in scored if not level or not level_for(p) or level_for(p) == level]
     if not at_level or at_level[0][0] < MATCH:
         other = next((p for s, p in scored if s >= SAME_TITLE), None)
-        if other and level and (other.details or {}).get("level") not in (None, level):
-            return None, 0.0, f"we have {other.details['title']} only for {other.details.get('level')}, not {level}"
+        if other and level and level_for(other) not in (None, level):
+            title = (other.details or {}).get("title") or other.name
+            return None, 0.0, f"we have {title} only for {level_for(other)}, not {level}"
         return None, (at_level[0][0] if at_level else 0.0), None
     score_, p = at_level[0]
     if not is_book(p):
@@ -216,7 +249,7 @@ def _line_row(store, p, qty):
     newer = store.get_product(d["replaced_by"]) if d.get("replaced_by") else None
     if newer:
         row["newer_edition"] = {"product_id": newer.id, "edition": (newer.details or {}).get("edition"),
-                                "price": naira(newer.sell_price_kobo), "in_stock": _available(store, newer) > 0}
+                                "price": naira(newer.sell_price_kobo), "in_stock": _in_stock(store, newer)}
         row["note"] = "old edition, as the list asks; say the newer one exists in case the school changed"
     old = [o for o in _older(store, p) if _available(store, o) > 0]
     if old:
@@ -332,14 +365,14 @@ def class_books(ctx, level, subject=None):
         return {"error": "which class? e.g. Primary 4, JSS1, SS2"}
     rows = []
     for p in _books(ctx.store):
-        d = p.details
-        if d.get("level") != lvl or d.get("replaced_by"):
+        d = p.details or {}
+        if level_for(p) != lvl or d.get("replaced_by"):
             continue
         if subject and similarity(subject, d.get("subject") or "") < 0.6 and subject.lower() not in p.name.lower():
             continue
         rows.append({"product_id": p.id, "name": p.name, "subject": d.get("subject"), "author": d.get("author"),
                      "edition": d.get("edition"), "price": naira(p.sell_price_kobo),
-                     "in_stock": _available(ctx.store, p) > 0})
+                     "in_stock": _in_stock(ctx.store, p)})
     schools = [b["school"] for b in (ctx.store.business.get("booklists") or []) if b.get("level") == lvl]
     return {"level": lvl, "books": rows, "school_lists_kept": schools,
             "note": "Ask which school: if we keep its list, price_booklist(school, level) prices it all at once."}
@@ -390,21 +423,21 @@ def term_restock(ctx, today=None):
     asked = _asked_for(store)
     rows, clear = [], []
     for p in _books(store):
-        d = p.details
+        d = p.details or {}
         available = _available(store, p)
         if d.get("replaced_by"):
             if available > 0:
                 clear.append({"name": p.name, "copies": available, "edition": d.get("edition"),
                               "advice": "sell these first or return them to the depot; don't reorder"})
             continue
-        if d.get("category") not in ("textbook", "literature", "exam"):
+        if d.get("category") not in ("textbook", "literature", "exam") and not (not d.get("category") and level_for(p)):
             continue
         rush = store.sales_qty(p.id, start=rush_start, end=rush_end)
         wanted = asked.get(p.id, 0)
         need = math.ceil(rush * factor) + wanted + p.reorder_level
         order = max(need - available, 0)
         if order:
-            rows.append({"product_id": p.id, "name": p.name, "level": d.get("level"), "stock": available,
+            rows.append({"product_id": p.id, "name": p.name, "level": level_for(p), "stock": available,
                          "sold_in_last_rush": rush, "parents_asked_but_we_lacked": wanted, "order_qty": order})
     rows.sort(key=lambda r: r["order_qty"], reverse=True)
     book_ids = {p.id for p in _books(store)}

@@ -65,6 +65,9 @@ class MemoryStore:
     def set_product_photo(self, pid, url):
         self.products[pid].photo = url
 
+    def set_product_details(self, pid, details):
+        self.products[pid].details = dict(details)
+
     def add_contact(self, c: Contact):
         self.contacts[c.id] = c
         return c

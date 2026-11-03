@@ -157,6 +157,8 @@ class Shops:
         self.counter = counter
         self.db = psycopg.connect(dsn, row_factory=dict_row, autocommit=True)
         self.db.execute(SCHEMA)
+        from app.accounts import Accounts
+        self.accounts = Accounts(self.db)
         self._open: dict[str, Shop] = {}
         self._lock = threading.Lock()
 
@@ -188,11 +190,23 @@ class Shops:
         return self.db.execute("select * from pilot.shops where deleted_at is null order by created_at").fetchall()
 
     def by_token(self, token):
+        """Her shop key from /admin/, or a device she signed in on with her PIN."""
         if not token:
             return None
         r = self.db.execute("select id from pilot.shops where token_hash = %s and deleted_at is null",
                             (_hash(token),)).fetchone()
-        return self.get(r["id"]) if r else None
+        sid = r["id"] if r else self.accounts.shop_for_session(token)
+        return self.get(sid) if sid else None
+
+    def register(self, name, kind, owner_name, phone, secret, shop_info="", payment_details="", links=None):
+        """She signs up herself: a new shop, her phone and PIN to sign in, and what customers are told."""
+        row, _ = self.create(name, kind, owner_name)
+        self.accounts.set_login(row["id"], phone, secret)
+        self.consent(row["id"])        # she ticked the privacy terms on the sign-up page
+        shop = self.get(row["id"])
+        shop.store.business = {**shop.store.business, "shop_info": shop_info, "payment_details": payment_details,
+                               "links": {k: v for k, v in (links or {}).items() if v}}
+        return self.row(row["id"])
 
     def by_slug(self, slug):
         r = self.db.execute("select id from pilot.shops where slug = %s and deleted_at is null", (slug,)).fetchone()
@@ -242,6 +256,8 @@ class Shops:
         if shop:
             shop.store.conn.close()
         self.db.execute(f"drop schema if exists shop_{sid} cascade")
+        self.accounts.end_all(sid)
+        self.db.execute("update pilot.shops set owner_phone = null, pin_hash = null where id = %s", (sid,))
         self.db.execute("delete from pilot.messages where shop_id = %s", (sid,))
         self.db.execute("delete from pilot.feedback where shop_id = %s", (sid,))
         self.db.execute("update pilot.shops set deleted_at = now(), token_hash = %s, name = 'deleted', owner_name = null "

@@ -23,8 +23,13 @@ PROMPT = """This photo is a Nigerian shop's price list, product list or stock no
 For each: the product name as written (expand obvious short forms, e.g. "Indomie ctn" -> "Indomie carton"), the unit
 it is sold in (carton, bag, tin, pack, crate, bottle, piece...), the selling price in naira, and if the page shows them,
 how many are in stock and what the shop paid for one (cost). Use null for anything not on the page; never guess.
-Handwriting: "12.5k" or "12,5" means 12500. Reply with JSON only:
-{"products": [{"name": "...", "unit": "...", "price_naira": number or null, "qty": number or null, "cost_naira": number or null}],
+Handwriting: "12.5k" or "12,5" means 12500.
+If it is a bookshop's list, give each book a "book" object with what the page shows: title, author, publisher,
+edition (or year), level (the class: "Primary 4", "JSS1", "SS2"), subject, and category (textbook, literature, exam,
+children, novel, religious, reference, stationery). Put the class in the name too ("New General Mathematics JSS1").
+Reply with JSON only:
+{"products": [{"name": "...", "unit": "...", "price_naira": number or null, "qty": number or null, "cost_naira": number or null,
+               "book": {...} or null}],
  "unreadable": ["lines you could not read"]}"""
 
 
@@ -49,8 +54,9 @@ def read_list(llm, image_data_url):
             continue
         qty = p.get("qty")
         qty = int(qty) if isinstance(qty, (int, float)) and qty >= 0 and float(qty).is_integer() else None
-        rows.append({"name": name[:60], "unit": (str(p.get("unit") or "piece").strip().lower() or "piece")[:20],
-                     "price_kobo": price, "qty": qty, "cost_kobo": _kobo(p.get("cost_naira"))})
+        details = _book_details(p.get("book"))
+        rows.append({"name": name[:60], "unit": _unit(p.get("unit"), details),
+                     "price_kobo": price, "qty": qty, "cost_kobo": _kobo(p.get("cost_naira")), "details": details})
     return rows, [str(u) for u in data.get("unreadable") or []][:5]
 
 
@@ -89,6 +95,13 @@ def setup_from_photo(ctx):
     return _offer(ctx, rows, unreadable, "From your photo")
 
 
+def _unit(unit, details):
+    unit = (str(unit or "piece").strip().lower() or "piece")[:20]
+    if details and details.get("category") != "stationery" and unit in ("piece", "pc", "pcs", "unit"):
+        return "copy"            # books are sold by the copy
+    return unit
+
+
 def _book_details(book):
     if not isinstance(book, dict) or not str(book.get("title") or "").strip():
         return {}
@@ -111,9 +124,9 @@ def add_products(ctx, products):
             return {"error": f"no selling price for {name}: ask her what she sells it for"}
         qty = p.get("qty_in_stock")
         qty = int(qty) if isinstance(qty, (int, float)) and qty > 0 and float(qty).is_integer() else None
-        rows.append({"name": name[:60], "unit": (str(p.get("unit") or "piece").strip().lower() or "piece")[:20],
-                     "price_kobo": price, "qty": qty, "cost_kobo": _kobo(p.get("cost_naira")),
-                     "details": _book_details(p.get("book"))})
+        details = _book_details(p.get("book"))
+        rows.append({"name": name[:60], "unit": _unit(p.get("unit"), details),
+                     "price_kobo": price, "qty": qty, "cost_kobo": _kobo(p.get("cost_naira")), "details": details})
     if not rows:
         return {"error": "no products given"}
     return _offer(ctx, rows, [], "To add")
@@ -178,6 +191,8 @@ def settle_catalog(a, option, ctx):
         entry = ctx.store.commit(Entry(kind="opening", lines=lines, stock_moves=moves, memo="Opening stock from photo",
                                        created_by="agent:approved", evidence_id=a["payload"].get("evidence_id")))
         ctx.committed.append(entry)
+    from app.agent.books import link_editions
+    link_editions(ctx.store)     # "NGM JSS2 (2014 edition)" now points to the 2023 one
     stocked = sum(1 for n in p["new"] if n.get("stock_ok"))
     ctx.say(f"Done. Added {len(added)} product{'s' if len(added) != 1 else ''}"
             + (f" ({stocked} with opening stock)" if stocked else "")

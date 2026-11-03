@@ -280,6 +280,11 @@ async function shop() {
       <button class="btn ghost" id="push-btn">Turn on notifications</button>
       <p class="note" id="push-note"></p>
     </div>` : ""}
+    ${ME?.chat ? `<h3>This device</h3>
+    <div class="card">
+      <p style="margin:0 0 10px">Signed in here. Signing out asks for your PIN or password next time; your other phones stay signed in.</p>
+      <button class="btn ghost" id="sign-out">Sign out of this device</button>
+    </div>` : ""}
     ${ME?.chat ? `<h3>Your data</h3>
     <div class="card">
       <p style="margin:0 0 10px">Your books, chats, voice notes and photos are kept for this test. Delete them any time: this can't be undone.</p>
@@ -290,6 +295,13 @@ async function shop() {
       ? navigator.share({ title: b.name, text: `Chat with ${b.name}: prices, orders and delivery`, url: link.url }).catch(() => {})
       : copy(link.url, $("#share-link"));
     $("#copy-link").onclick = () => copy(link.url, $("#copy-link"));
+    $("#sign-out").onclick = async () => {
+      await send("POST", "/api/logout", {}).catch(() => {});
+      localStorage.removeItem(TOKEN_KEY);
+      ME = null;
+      history.replaceState(null, "", location.pathname + "#/");   // no reload, so the note stays
+      login("You're signed out.");
+    };
     $("#delete-shop").onclick = async () => {
       const typed = prompt(`This deletes ${b.name}'s books and chats for good. Type DELETE to confirm.`);
       if ((typed || "").trim().toUpperCase() !== "DELETE") return;
@@ -908,16 +920,45 @@ window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); instal
 
 // ---- login ------------------------------------------------------------------------
 
+// A saved key that no longer works (signed out elsewhere, expired, shop deleted): forget it and ask again.
+function signedOut() {
+  const had = localStorage.getItem(TOKEN_KEY);
+  localStorage.removeItem(TOKEN_KEY);
+  return login(had ? "Please sign in again." : "");
+}
+
 function login(message) {
   setShop("Sabi");
   view.innerHTML = `<div class="login card">
-    <h1>Open your books</h1>
-    <p style="color:var(--muted)">Paste the app key Sabi gave you. It stays on this phone.</p>
-    <label for="key">App key</label>
-    <input id="key" type="password" autocomplete="off" autocapitalize="off">
-    ${message ? `<div class="err">${esc(message)}</div>` : ""}
-    <button class="btn" id="go">Open</button></div>`;
-  $("#go").onclick = () => { localStorage.setItem(TOKEN_KEY, $("#key").value.trim()); ME = null; route(); };
+    <h1>Open your shop</h1>
+    <p style="color:var(--muted)">Sign in with your WhatsApp number and your PIN or password.</p>
+    <label for="in-phone">WhatsApp number</label>
+    <input id="in-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="0803 123 4567">
+    <label for="in-secret">PIN or password</label>
+    <input id="in-secret" type="password" autocomplete="current-password">
+    <label class="remember"><input type="checkbox" id="in-remember" checked> Keep me signed in on this device</label>
+    <div class="err" id="in-err">${message ? esc(message) : ""}</div>
+    <button class="btn" id="go">Sign in</button>
+    <p class="note" style="text-align:center">New to Sabi? <a href="/join/">Create your shop</a> · <a href="#" id="use-key">I have an app key</a></p>
+    <div id="key-box" hidden>
+      <label for="key">App key</label>
+      <input id="key" type="password" autocomplete="off" autocapitalize="off">
+      <button class="btn ghost" id="go-key">Open with key</button>
+    </div></div>`;
+  const signIn = async () => {
+    $("#in-err").textContent = ""; $("#go").disabled = true;
+    try {
+      const res = await fetch("/join/api/login", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: $("#in-phone").value.trim(), secret: $("#in-secret").value, remember: $("#in-remember").checked }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Couldn't sign in. Try again.");
+      localStorage.setItem(TOKEN_KEY, data.token); ME = null; route();
+    } catch (e) { $("#in-err").textContent = e.message; $("#go").disabled = false; }
+  };
+  $("#go").onclick = signIn;
+  $("#in-secret").onkeydown = e => e.key === "Enter" && signIn();
+  $("#use-key").onclick = e => { e.preventDefault(); $("#key-box").hidden = false; $("#key").focus(); };
+  $("#go-key").onclick = () => { localStorage.setItem(TOKEN_KEY, $("#key").value.trim()); ME = null; route(); };
 }
 
 // ---- router ---------------------------------------------------------------------
@@ -941,7 +982,7 @@ async function route() {
     try {
       ME = await api("/api/me");
     } catch (err) {
-      if (err instanceof AuthError) return login(localStorage.getItem(TOKEN_KEY) ? "That key didn't work." : "");
+      if (err instanceof AuthError) return signedOut();
     }
     $("#chat-tab").hidden = !ME?.chat;
     $("#posts-tab").hidden = !!ME?.chat;   // pilot shops have no Instagram connected
@@ -959,7 +1000,7 @@ async function route() {
   try {
     await screen();
   } catch (err) {
-    if (err instanceof AuthError) return login(localStorage.getItem(TOKEN_KEY) ? "That key didn't work." : "");
+    if (err instanceof AuthError) return signedOut();
     view.innerHTML = `<div class="empty">Couldn't load this page.<br><small>${esc(err.message)}</small></div>`;
   }
 }

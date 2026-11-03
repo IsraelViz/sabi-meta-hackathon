@@ -88,6 +88,9 @@ class PostgresStore:
     def set_product_photo(self, pid, url):
         self.conn.execute("update products set photo = %s where id = %s", (url, pid))
 
+    def set_product_details(self, pid, details):
+        self.conn.execute("update products set details = %s where id = %s", (Jsonb(details), pid))
+
     def add_contact(self, c: Contact):
         self.conn.execute(f"insert into contacts ({', '.join(_CONTACT_COLS)}) values "
                           f"({', '.join('%(' + k + ')s' for k in _CONTACT_COLS)})", c.__dict__)
