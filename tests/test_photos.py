@@ -212,3 +212,23 @@ def test_sam_31_text_records_become_detections():
     sam = SamCounter(endpoint="https://example.invalid/sam")
     sam.segment = lambda img, prompt: {"detections": dets}
     assert sam.count(PHOTO, {"x": "red circle"})["x"]["count"] == 1   # the 0.31 guess is dropped
+
+
+def test_stock_take_falls_back_to_muse_spark_when_sam_is_refused():
+    from app.media.counting import FallbackCounter
+
+    class Refused:
+        name = "sam-3.1"
+
+        def count(self, image_data_url, prompts):
+            raise RuntimeError("SAM 404: not available in this region")
+
+    class Vision:
+        name = "muse-spark-vision"
+
+        def count(self, image_data_url, prompts):
+            return {k: {"count": 2, "detections": []} for k in prompts}
+
+    counter = FallbackCounter(Refused(), Vision())
+    assert counter.count("data:image/jpeg;base64,AA", {"p-milk": "Peak milk tin"})["p-milk"]["count"] == 2
+    assert counter.name.startswith("muse-spark-vision (SAM failed: SAM 404")

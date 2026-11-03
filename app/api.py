@@ -245,9 +245,9 @@ async def product_photo(product_id: str, request: Request):
     shop = getattr(request.state, "shop", None)
     media = (LocalMedia(request.app.state.shops.media_root / shop.id, f"/shops-media/{shop.id}") if shop
              else LocalMedia())
-    saved = media.save(data, ext)
-    if not saved.get("url"):
+    if not media.base:   # checked first, so a refused upload leaves no file behind
         raise HTTPException(409, "set PUBLIC_BASE_URL so customers can be sent the picture")
+    saved = media.save(data, ext)
     store.set_product_photo(product_id, saved["url"])
     return {"product_id": product_id, "photo": saved["url"]}
 

@@ -27,7 +27,8 @@ class MuseImage:
         r = httpx.post(f"{settings.meta_base_url}/images/generations",
                        headers={"Authorization": f"Bearer {settings.model_api_key}"},
                        json={"model": settings.image_model, "prompt": prompt, "n": 1}, timeout=180)
-        r.raise_for_status()
+        if r.status_code >= 400:
+            raise RuntimeError(f"Muse Image {r.status_code}: {r.text[:200]}")
         item = r.json()["data"][0]
         if item.get("b64_json"):
             raw = base64.b64decode(item["b64_json"])

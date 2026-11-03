@@ -7,12 +7,15 @@ record per object found: `<|box;x1=..;y1=..;x2=..;y2=..;w=..;h=..;c=..|><|mask;x
 `VisionCounter` asks Muse Spark to count instead: the fallback and the baseline.
 """
 import base64
+import logging
 import re
 
 import httpx
 
 from app.config import settings
 from app.normalize.json_reply import parse_json
+
+log = logging.getLogger("sabi.counting")
 
 _RECORD = re.compile(r"(\d+)<\|box;(.*?)\|>(?:<\|mask;(.*?)\|>)?")
 
@@ -57,7 +60,8 @@ class SamCounter:
                              "input": [{"type": "message", "role": "user", "content": [
                                  {"type": "input_text", "text": prompt},
                                  {"type": "input_image", "image_url": image_data_url}]}]})
-        r.raise_for_status()
+        if r.status_code >= 400:   # Meta's reason, not just the status, so the run log says why
+            raise RuntimeError(f"SAM {r.status_code}: {r.text[:200]}")
         text = "".join(part.get("text", "") for item in r.json().get("output") or []
                        for part in item.get("content") or [] if part.get("type") == "output_text")
         return {"detections": parse_records(text)}
@@ -103,8 +107,26 @@ def sam_available():
     return settings.stocktake_backend != "vision" and bool(settings.model_api_key or settings.sam_endpoint)
 
 
+class FallbackCounter:
+    """SAM first; if the Meta API can't be reached or refuses, Muse Spark counts instead."""
+
+    def __init__(self, sam, vision):
+        self.sam, self.vision = sam, vision
+        self.name = sam.name
+
+    def count(self, image_data_url, prompts):
+        try:
+            return self.sam.count(image_data_url, prompts)
+        except Exception as e:
+            log.warning("SAM failed, counting with Muse Spark instead: %s", e)
+            self.name = f"{self.vision.name} (SAM failed: {str(e)[:120]})"
+            return self.vision.count(image_data_url, prompts)
+
+
 def make_counter(llm):
-    return SamCounter() if settings.stocktake_backend == "sam" or sam_available() else VisionCounter(llm)
+    if settings.stocktake_backend == "sam" or sam_available():
+        return FallbackCounter(SamCounter(), VisionCounter(llm)) if llm else SamCounter()
+    return VisionCounter(llm)
 
 
 def data_url(image_bytes, mime="image/jpeg"):

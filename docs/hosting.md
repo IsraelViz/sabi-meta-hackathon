@@ -6,6 +6,9 @@ Supabase: the books, the pilot shops, and every saved picture and voice note
 (`app/media/durable.py` writes each file to a `saved_files` table and puts it back on
 disk at start-up).
 
+The blueprint puts the app in Render's **Virginia (US)** region: Meta's model API (SAM,
+Muse Image) refuses calls from Render's Frankfurt region. The database can stay in Frankfurt.
+
 Free-tier limits worth knowing:
 - Render sleeps after 15 minutes without traffic; the next message takes about a minute.
   A free pinger (step 5) keeps it awake. 750 free hours a month covers one service all month.

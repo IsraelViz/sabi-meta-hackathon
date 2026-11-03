@@ -2,10 +2,10 @@
 # The books live in Supabase (DATABASE_URL), so a restart loses nothing. See docs/hosting.md.
 services:
   - type: web
-    name: sabi
+    name: sabi-us            # a new service: Render cannot move an existing one to another region
     runtime: docker
     plan: free
-    region: frankfurt          # the closest Render region to West Africa
+    region: virginia         # Meta's model API (SAM, Muse Image) refuses calls from Render's EU region
     healthCheckPath: /health
     autoDeploy: true
     envVars:
