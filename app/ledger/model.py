@@ -19,6 +19,9 @@ class Product:
     reorder_level: int = 0
     countable: bool = True
     photo: str | None = None    # the shop's own picture of it, sent to customers who ask
+    # What a plain name can't say. Books: title, author, publisher, edition, level ("JSS1",
+    # "Primary 4"), subject, category, isbn, and replaced_by (the id of the newer edition).
+    details: dict = field(default_factory=dict)
 
     @property
     def price_floor(self):
@@ -38,6 +41,7 @@ class Contact:
     aliases: list[str] = field(default_factory=list)
     ig_handle: str | None = None
     last_inbound_at: datetime | None = None   # last message from them (WhatsApp 24-hour window)
+    offers_ok: bool | None = None             # said yes (True) or stop (False) to the shop's offers; None = never asked
 
 
 @dataclass

@@ -49,16 +49,22 @@ class MetaPublisher:
         return r.json()
 
     def publish(self, image_url, caption):
-        """Returns {platform: post_id}. Raises if a configured platform fails."""
+        """Returns ({platform: post_id}, {platform: error}). Each platform is tried even if another fails."""
         if not image_url:
             raise RuntimeError("flyer has no public URL; set PUBLIC_BASE_URL")
-        out = {}
-        if "instagram" in self.platforms:
-            container = self._post(f"{self.ig_user_id}/media", {"image_url": image_url, "caption": caption})
-            out["instagram"] = self._post(f"{self.ig_user_id}/media_publish",
-                                          {"creation_id": container["id"]})["id"]
-        if "facebook" in self.platforms:
-            out["facebook"] = self._post(f"{self.page_id}/photos", {"url": image_url, "caption": caption})["id"]
-        if not out:
+        if not self.platforms:
             raise RuntimeError("no Instagram or Facebook account configured (IG_USER_ID / FB_PAGE_ID / PAGE_ACCESS_TOKEN)")
-        return out
+        out, errors = {}, {}
+        if "instagram" in self.platforms:
+            try:
+                container = self._post(f"{self.ig_user_id}/media", {"image_url": image_url, "caption": caption})
+                out["instagram"] = self._post(f"{self.ig_user_id}/media_publish",
+                                              {"creation_id": container["id"]})["id"]
+            except Exception as e:
+                errors["instagram"] = str(e)[:300]
+        if "facebook" in self.platforms:
+            try:
+                out["facebook"] = self._post(f"{self.page_id}/photos", {"url": image_url, "caption": caption})["id"]
+            except Exception as e:
+                errors["facebook"] = str(e)[:300]
+        return out, errors

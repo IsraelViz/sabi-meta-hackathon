@@ -48,8 +48,16 @@ def _row(store, p):
             "in_stock": available > 0 or not reports.tracks_stock(store, p.id), "has_photo": bool(p.photo)}
 
 
+def _book_line(p):
+    d = p.details or {}
+    bits = [f"by {d['author']}" if d.get("author") else "", d.get("publisher") or "",
+            f"{d['edition']} edition" if d.get("edition") else "", d.get("level") or ""]
+    bits = [b for b in bits if b]
+    return f" (book: {', '.join(bits)})" if d.get("title") and bits else ""
+
+
 def identify(llm, image_data_url, products):
-    catalogue = "\n".join(f"- {p.id}: {p.name}" + (f"; {', '.join(p.aliases)}" if p.aliases else "")
+    catalogue = "\n".join(f"- {p.id}: {p.name}" + (f"; {', '.join(p.aliases)}" if p.aliases else "") + _book_line(p)
                           for p in products)
     reply = llm.chat([{"role": "user", "content": [
         {"type": "text", "text": IDENTIFY.format(catalogue=catalogue or "(nothing yet)")},
@@ -113,6 +121,30 @@ def _ask(ctx, what, why, candidates):
     return {"status": "asked_customer", "photo_shows": what, "why_unclear": why or "not sure which product",
             "next": "The verifying question is sent. Don't ask it again or guess; wait for their answer. "
                     "When they answer, use find_product with what they say."}
+
+
+def identify_for_owner(ctx):
+    """Owner: which of her products is in this photo (a book cover, a pack), with stock and price."""
+    if not ctx.image_data_url:
+        return {"error": "there is no photo in this message"}
+    if ctx.llm is None:
+        return {"error": "I can't look at photos right now; ask her what it is"}
+    products = {p.id: p for p in ctx.store.list_products()}
+    seen = identify(ctx.llm, ctx.image_data_url, list(products.values()))
+    try:
+        sure = float(seen.get("sure") or 0)
+    except (TypeError, ValueError):
+        sure = 0.0
+    p = products.get(seen.get("product_id"))
+    if p is None or sure < SURE:
+        options = [products[i].name for i in seen.get("candidates") or [] if i in products][:2]
+        return {"photo_shows": seen.get("seen"), "match": None, "could_be": options,
+                "next": "Not sure which product: ask her, naming could_be if any. If it is new, add_products."}
+    from app.agent.books import facts
+    row = {"product_id": p.id, "name": p.name, "stock": ctx.store.stock_on_hand(p.id),
+           "price": naira(p.sell_price_kobo), **facts(ctx.store, p)}
+    return {"photo_shows": seen.get("seen"), "match": row,
+            "next": "Use this product_id for what she asked (record_entry, stock, price)."}
 
 
 def send_product_photo(ctx, product_id):

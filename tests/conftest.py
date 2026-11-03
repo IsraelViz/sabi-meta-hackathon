@@ -7,6 +7,9 @@ own database instead (its public schema is wiped for every test).
 import os
 import tempfile
 
+# Most tests are written against the provisions shop; the bookshop tests load seed/bookshop.json themselves.
+os.environ.setdefault("DEMO_SHOP", "provisions")
+
 import pytest
 
 from app.ledger.seed import demo_store

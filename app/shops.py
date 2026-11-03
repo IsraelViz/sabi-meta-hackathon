@@ -128,11 +128,11 @@ def slugify(name):
 
 
 class SelfPublisher:
-    """Pilot shops have no Instagram connected: the flyer is hers to save and post."""
-    platforms = ["your own page or status (save the picture and post it)"]
+    """Pilot shops have no Instagram or Facebook connected: after Post, Sabi offers her Status and her customers."""
+    platforms = []
 
     def publish(self, url, caption):
-        return {"ready": "press and hold the picture to save it"}
+        return {}, {}
 
 
 @dataclass

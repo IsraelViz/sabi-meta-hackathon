@@ -43,6 +43,15 @@ services:
         sync: false
       - key: OWNER_PHONE
         sync: false
+      # Instagram and Facebook Page posting (docs/social.md)
+      - key: IG_USER_ID
+        sync: false
+      - key: FB_PAGE_ID
+        sync: false
+      - key: PAGE_ACCESS_TOKEN
+        sync: false
+      - key: SHOP_WHATSAPP_DISPLAY     # printed on flyers, e.g. 0801 234 5678
+        sync: false
       # Owner app and admin
       - key: OWNER_APP_TOKEN
         sync: false

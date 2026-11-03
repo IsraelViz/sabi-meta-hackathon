@@ -118,7 +118,7 @@ def _render_and_ask(ctx, services, product, reason, cutout_path, background_path
         {"label": "Change", "patch": [], "action": "change"},
         {"label": "Skip", "patch": [], "action": "skip"}])
     from app.agent.approvals import buttons_for
-    where = ", ".join(services.publisher.platforms) or "Instagram (not connected yet)"
+    where = " and ".join(p.capitalize() for p in services.publisher.platforms) or "WhatsApp (Instagram and Facebook aren't connected yet)"
     body = (f"Draft post for *{product.name}* ({naira(product.sell_price_kobo)} per {product.base_unit}).\n"
             f"Why: {reason}.\n\n{caption}\n\nPost to {where}?")
     if not saved["url"]:
@@ -141,14 +141,22 @@ def settle_post(approval, option, ctx, services):
         ctx.say("What should I change? E.g. \"shorter caption\", \"more Pidgin\", \"different background\".")
         return
     if action == "post":
-        try:
-            ids = services.publisher.publish(post["asset_url"], post["caption"])
-        except Exception as e:
-            ctx.store.update_post(post["id"], status="failed", error=str(e)[:500])
-            ctx.say(f"I couldn't post it: {e}")
-            return
-        ctx.store.update_post(post["id"], status="published", platform_ids=ids)
-        ctx.say("Posted ✅ " + ", ".join(f"{k}: {v}" for k, v in ids.items()))
+        from app.promo.share import offer_whatsapp
+        ids, errors = {}, {}
+        if services.publisher.platforms:
+            try:
+                ids, errors = services.publisher.publish(post["asset_url"], post["caption"])
+            except Exception as e:
+                errors = {"instagram/facebook": str(e)[:300]}
+        if ids:
+            ctx.store.update_post(post["id"], status="published", platform_ids=ids)
+            ctx.say("Posted ✅ on " + " and ".join(k.capitalize() for k in ids) + ".")
+        else:
+            ctx.store.update_post(post["id"], status="failed" if errors else "approved",
+                                  error="; ".join(f"{k}: {v}" for k, v in errors.items())[:500] or None)
+        for k, v in errors.items():
+            ctx.say(f"I couldn't post it on {k.capitalize()}: {v}")
+        offer_whatsapp(ctx, ctx.store.get_post(post["id"]))
 
 
 def revise_post(approval, instruction, ctx, services):

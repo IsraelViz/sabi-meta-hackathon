@@ -94,7 +94,7 @@ def test_demo_never_posts_to_a_real_account():
     assert preview["image"].startswith(f"/demo/api/{sid}/media/") and "not really posted" in preview["body"]
     assert c.get(preview["image"]).headers["content-type"] == "image/jpeg"
     done = c.post(f"/demo/api/{sid}/message", json={"who": "owner", "button_id": preview["buttons"][0]["id"]}).json()
-    assert done["messages"][0]["body"].startswith("Posted ✅ instagram: demo-")
+    assert done["messages"][0]["body"] == "Posted ✅ on Instagram."
 
 
 def test_message_caps_and_expiry():

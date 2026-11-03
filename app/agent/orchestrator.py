@@ -18,6 +18,7 @@ from app import money
 from app.agent import approvals, language, sales
 from app.agent.context import RunContext
 from app.agent.tools import toolset
+from app.promo import share
 from app.ledger.model import Contact
 from app.ledger.store import new_id
 from app.normalize.amounts import normalize
@@ -28,6 +29,10 @@ PROMPT_VERSION = "2026-11-01.1"
 MAX_TOOL_CALLS = 6
 HISTORY_TURNS = 6
 MARKDOWN_BOLD = re.compile(r"\*\*(.+?)\*\*")   # WhatsApp bolds with one asterisk: **x** would show the stars
+# Muse Spark Open sometimes writes a tool call as text (its own markup) instead of making it. Its words
+# then promise something that didn't happen ("reserving now"), so none of that reply is sent.
+LEAKED_CALL = re.compile(r"<\|(?:start|message|eom|eot|call|channel)\|>|<\w+:function_calls>|<\w+:invoke\b")
+NOT_DONE = "Sorry, I couldn't finish that. Please send it again."
 
 
 
@@ -121,6 +126,11 @@ class Agent:
         started = time.monotonic()
         error = None
         try:
+            if persona == "customer" and share.is_stop(raw):   # the template promises STOP works
+                share.set_offers(ctx, False)
+                ctx.say("Done, no more offers from us. You can still message us any time to buy.")
+                self._remember(ctx, raw)
+                return ctx
             if persona == "customer" and sales.with_owner(self.store.get_lead(ctx.contact_id)):
                 sales.relay(ctx, raw or "(sent a photo or voice note)")
                 self._remember(ctx, raw, "(passed to the owner, who is handling this chat)")
@@ -207,6 +217,9 @@ class Agent:
                 final = self.llm.chat(messages).content
                 break
 
+        if final and LEAKED_CALL.search(final):
+            log.warning("model wrote a tool call as text; not sending it: %s", final[:300])
+            final = NOT_DONE
         if final and final.strip():
             ctx.say(MARKDOWN_BOLD.sub(r"*\1*", final.strip()))
             ctx.outbox[-1].localized = True     # the model already wrote it in her language

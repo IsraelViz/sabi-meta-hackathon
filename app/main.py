@@ -21,7 +21,7 @@ from app.agent import sales
 from app.jobs import daily_summary
 from app.jobs import pilot as pilot_jobs
 from app.ledger import reports
-from app.ledger.seed import demo_store
+from app.ledger.seed import add_demo_history, demo_shop_path, demo_store
 from app.media.evidence_store import PrivateMedia
 from app.media.transcribe import shop_words, transcribe
 from app.models.llm import LLMClient
@@ -33,13 +33,12 @@ private_media = PrivateMedia(settings.private_media_dir)
 
 
 def make_store():
-    shop = {"path": settings.shop_file} if settings.shop_file else {}
+    shop = {"path": settings.shop_file or demo_shop_path()}
     if settings.store == "memory":
         store = demo_store(**shop)
-        if settings.demo_history:   # a week of trading so the owner app has something to show
-            from app.ledger.demo_week import add_history
+        if settings.demo_history:   # trading history so the owner app has something to show
             from app.promo.publish import LocalMedia
-            add_history(store, media=LocalMedia())
+            add_demo_history(store, shop["path"], media=LocalMedia())
         return store
     if settings.store == "postgres":
         from app.ledger.pg_store import PostgresStore
@@ -53,9 +52,8 @@ def make_store():
         if pg.is_empty():   # first run: load the shop file, or the demo shop
             demo_store(store=pg, **shop)
             if settings.demo_history:
-                from app.ledger.demo_week import add_history
                 from app.promo.publish import LocalMedia
-                add_history(pg, media=LocalMedia())
+                add_demo_history(pg, shop["path"], media=LocalMedia())
         return pg
     raise RuntimeError(f"STORE must be 'memory' or 'postgres', not {settings.store!r}")
 

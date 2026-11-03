@@ -18,8 +18,8 @@ from app.ledger.store import LEAD_DEFAULTS, _oldest_open_due, new_id, next_avg_c
 SCHEMA = Path(__file__).with_name("schema.sql")
 
 _PRODUCT_COLS = ("id", "name", "aliases", "base_unit", "sell_price_kobo", "min_price_kobo", "max_price_kobo",
-                 "avg_cost_kobo", "reorder_level", "countable", "photo")
-_CONTACT_COLS = ("id", "name", "kind", "phone", "aliases", "ig_handle", "last_inbound_at")
+                 "avg_cost_kobo", "reorder_level", "countable", "photo", "details")
+_CONTACT_COLS = ("id", "name", "kind", "phone", "aliases", "ig_handle", "last_inbound_at", "offers_ok")
 
 
 class PostgresStore:
@@ -52,9 +52,9 @@ class PostgresStore:
 
     @business.setter
     def business(self, data):
-        fields = {k: Jsonb(v) if k in ("links", "knowledge", "prefs") else v for k, v in data.items()
+        fields = {k: Jsonb(v) if k in ("links", "knowledge", "prefs", "booklists") else v for k, v in data.items()
                   if k in ("name", "payment_details", "shop_info", "links", "knowledge", "profile_updated_at", "prefs",
-                           "timezone", "currency", "locale")}
+                           "timezone", "currency", "locale", "booklists")}
         if self.conn.execute("select 1 from businesses").fetchone():
             sets = ", ".join(f"{k} = %({k})s" for k in fields)
             if sets:
@@ -70,7 +70,8 @@ class PostgresStore:
     # --- catalogue -------------------------------------------------------
     def add_product(self, p: Product):
         self.conn.execute(f"insert into products ({', '.join(_PRODUCT_COLS)}) values "
-                          f"({', '.join('%(' + c + ')s' for c in _PRODUCT_COLS)})", p.__dict__)
+                          f"({', '.join('%(' + c + ')s' for c in _PRODUCT_COLS)})",
+                          {**p.__dict__, "details": Jsonb(p.details or {})})
         return p
 
     def get_product(self, pid):
@@ -102,6 +103,9 @@ class PostgresStore:
 
     def set_contact_phone(self, cid, phone):
         self.conn.execute("update contacts set phone = %s where id = %s", (phone, cid))
+
+    def set_contact_offers(self, cid, ok):
+        self.conn.execute("update contacts set offers_ok = %s where id = %s", (ok, cid))
 
     def touch_inbound(self, cid, when=None):
         self.conn.execute("update contacts set last_inbound_at = %s where id = %s", (when or now(), cid))

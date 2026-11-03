@@ -74,10 +74,14 @@ def build_payload(to, body, buttons=None, image_url=None, template=None):
     if template:
         # Outside the 24-hour window WhatsApp only delivers pre-approved templates;
         # `body` is just our record of what the template renders to.
+        components = [{"type": "body", "parameters": [{"type": "text", "text": str(p)}
+                                                      for p in template.get("params", [])]}]
+        if template.get("header_image"):   # offers: the flyer above the text
+            components.insert(0, {"type": "header", "parameters": [
+                {"type": "image", "image": {"link": template["header_image"]}}]})
         return {"messaging_product": "whatsapp", "to": to, "type": "template", "template": {
             "name": template["name"], "language": {"code": template.get("language", "en")},
-            "components": [{"type": "body", "parameters": [{"type": "text", "text": str(p)}
-                                                          for p in template.get("params", [])]}]}}
+            "components": components}}
     if image_url and buttons:
         # Flyer preview with Post / Change / Skip under it, in one message
         return {"messaging_product": "whatsapp", "to": to, "type": "interactive", "interactive": {

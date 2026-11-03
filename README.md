@@ -67,6 +67,7 @@ Sell → record → learn from the books → promote → sell.
 5. **Muse Spark writes the caption** in her voice (`caption.py`). Code rejects any caption with a price other than the list price, asks once for a rewrite, then uses a safe template.
 6. **She sees the preview on WhatsApp** (image + **Post / Change / Skip**). Nothing goes public until she taps Post. *Change* takes her words ("more Pidgin", "different background") and redrafts.
 7. **Publish** (`publish.py`): Instagram content publishing (create the container, then publish), plus the linked Facebook Page if `FB_PAGE_ID` is set. Every post is stored with its reason, caption, the tools that made it, and the platform post ids.
+8. **WhatsApp** (`share.py`): after Post, she chooses with buttons. *My Status* sends her the flyer to forward to her Status, since the API can't post there. *Recent customers* goes to people who messaged in the last 24 hours. *Offer list* goes to customers who said yes to offers, using the approved `new_arrival` template outside the 24-hour window. She sees who will get it and taps Send first. STOP from a customer takes them off the list, without the model. Setup: [docs/social.md](docs/social.md).
 
 ![Sample flyer](docs/sample_flyer.jpg)
 
@@ -153,6 +154,17 @@ She photographs her price list or stock notebook and says "set up my shop" (`set
 - Reminders and captions are drafted in her language, and 🔊 reads replies with the phone's voice for that language when it has one.
 - **Her money** (`app/money.py`): naira, F CFA (West and Central Africa), cedi, Kenyan, Tanzanian and Ugandan shilling, or rand, set in **Shop ⚙ → Settings** or by telling Sabi ("je suis au Sénégal, mes comptes sont en francs CFA"). Every message, summary, caption, statement and screen writes amounts her way (₦12,500 or 12 500 F CFA), and code reads amounts the way she writes them ("15 000 F", "GH₵450", "300 cedis"). A naira shop never reads "$20" as naira. Nothing is converted between currencies: the setting is the money her books are kept in.
 
+## The demo bookshop (`app/agent/books.py`, `seed/bookshop.json`)
+
+The demo shop is Nkechi Books & Stationery in Ogba, Lagos (`DEMO_SHOP=bookshop`; `DEMO_SHOP=provisions` brings back the provisions shop). It has school textbooks from Primary 4 to SS2, literature texts, exam past questions, children's books, a Bible, a dictionary and stationery. Its history includes the September resumption rush and a normal week. Every book knows its title, author, publisher, edition, class and subject (`Product.details`).
+
+- **A booklist from a photo**: a parent sends a photo of the school list. Muse Spark reads every line, and code matches each one to the shelf at the right class and edition. Short forms are understood ("Basic Sci. & Tech. JSS 1", "NGM", "Basic 7" for JSS1, "2 dozen" exercise books). Code prices the list from the books and says what is ready, short, sold out or not stocked. One reply gives the total for what the shop has, and "reserve them" turns it into an order. The model never prices a line.
+- **School lists the shop keeps**: the owner sends a nearby school's list once ("this is Grace College JSS1 list", `save_booklist`). After that, a parent only says "my son is in JSS1 at Grace College".
+- **Classes and editions**: JSS1 maths is never offered as JSS2 maths. An old edition points to the newer one, and a list that asks for a particular year gets that edition, or a note to check with the school.
+- **A book from its cover**: the owner sends a cover photo with "I sold 2 of this one", or a customer sends one asking "do you have this?", and Sabi finds the book.
+- **Before resumption** (`term_restock`): Sabi works out when schools next resume (usually mid-September, mid-January and late April). For each title it counts what she sold in the last resumption rush, adds what parents asked for that she didn't have, and gives the order quantity and an order-by date three weeks ahead. It also lists old-edition copies to clear rather than reorder. The second- and third-term shares of a September rush are stated as assumptions.
+- What parents asked for and couldn't get goes into her summary as before ("Agricultural Science JSS1 ×3").
+
 ## Selling to customers (`app/agent/sales.py`, `orders.py`)
 
 Customers message the shop's WhatsApp number, and Sabi answers straight away, in their language, with the shop's real prices and stock. Nobody waits for the owner to see the message before getting a reply.
@@ -233,7 +245,7 @@ python scripts/dev_server.py      # then open http://127.0.0.1:8000/app/
 
 ## Status
 
-Working and tested (366 tests), with the owner app also checked by hand at phone size in light and dark mode: the ledger and its database triggers, the Postgres and memory stores, the validator, posting and reversals, the amount normaliser, the agent with both personas, owner approvals, customer orders and payment claims, sales leads, handoff to the owner and follow-ups, learning the shop from its pages, the business statement and its signed links, the credit guard, restock alerts, setting up from a photo, receipts and notebook pages, the stock-take, the promotion loop, payment reminders, the public two-phone demo, WhatsApp parsing and sending, the daily and weekly summaries at her chosen time, the coach and its follow-ups, the Sabi Score, the payment alert check, the "Why?" trail, savings, shared prices, notifications, the results page, other languages (detection, French-style amounts, translation with the number check), other currencies, and shopping by picture.
+Working and tested (386 tests), with the owner app also checked by hand at phone size in light and dark mode: the ledger and its database triggers, the Postgres and memory stores, the validator, posting and reversals, the amount normaliser, the agent with both personas, owner approvals, customer orders and payment claims, sales leads, handoff to the owner and follow-ups, learning the shop from its pages, the business statement and its signed links, the credit guard, restock alerts, setting up from a photo, receipts and notebook pages, the stock-take, the promotion loop, payment reminders, the public two-phone demo, WhatsApp parsing and sending, the daily and weekly summaries at her chosen time, the coach and its follow-ups, the Sabi Score, the payment alert check, the "Why?" trail, savings, shared prices, notifications, the results page, other languages (detection, French-style amounts, translation with the number check), other currencies, shopping by picture, and the bookshop (booklists, classes and editions, covers, the school year).
 
 New features run live on Baseten:
 - **Credit guard:** caught Mama Tunde (₦54,000 owed, 2 days late) before more credit was given.

@@ -35,8 +35,7 @@ from app.config import settings
 from app.jobs.daily_summary import summary_message
 from app.ledger import reports
 from app.ledger.reports import headline_kobo
-from app.ledger.demo_week import add_history
-from app.ledger.seed import demo_store
+from app.ledger.seed import add_demo_history, demo_shop_path, demo_store
 from app.ledger.store import now
 from app.promo.publish import LocalMedia
 
@@ -51,7 +50,7 @@ class DemoPublisher:
     platforms = ["instagram (demo, not really posted)"]
 
     def publish(self, url, caption):
-        return {"instagram": "demo-" + secrets.token_hex(4)}
+        return {"instagram": "demo-" + secrets.token_hex(4)}, {}
 
 
 @dataclass
@@ -84,8 +83,8 @@ class DemoRegistry:
                 self._drop(next(iter(self.sessions)))
             sid = secrets.token_urlsafe(12)
             media_dir = self.root / sid
-            store = demo_store()
-            add_history(store, media=LocalMedia(media_dir, f"/demo/api/{sid}"))
+            store = demo_store(demo_shop_path())
+            add_demo_history(store, demo_shop_path(), media=LocalMedia(media_dir, f"/demo/api/{sid}"))
             store.set_contact_phone(CUSTOMER_CONTACT, CUSTOMER)
             from app.promo.flow import PromoServices, default_services
             base = self.promo_factory(media_dir, sid) if self.promo_factory else default_services()
@@ -166,19 +165,20 @@ def make_router(registry_ref):
     def new_session():
         s = registry_ref().create()
         shop = s.agent.store.business.get("name", "Demo shop")
+        tips = s.agent.store.business.get("demo_tips") or {}
         voice = settings.can_transcribe()
         return {"id": s.id, "shop": shop, "model": getattr(s.agent.llm, "model", None), "voice": voice,
                 "max_messages": registry_ref().max_messages, "books": _books(s.agent.store),
                 "intro": [
                     {"to": "owner", "body": f"Welcome to {shop}'s books 👋 You are the owner. "
                                             f"{'Try a voice note or type' if voice else 'Type'}: "
-                                            "\"I sell 2 carton Indomie give Chioma, she go pay Friday\". "
-                                            "Then try \"I wan apply for loan\", \"wetin I suppose buy?\", "
-                                            "or send a photo of a price list."},
+                                            + tips.get("owner", "\"I sell 2 carton Indomie give Chioma, she go pay "
+                                                       "Friday\". Then try \"I wan apply for loan\", \"wetin I "
+                                                       "suppose buy?\", or send a photo of a price list.")},
                     {"to": "customer", "body": "You are Mama Tunde, a regular customer. Try: "
-                                               "\"How much for Peak milk? I want 6 tins\", "
-                                               "\"You go do discount if I buy 10 carton?\" "
-                                               "or \"Una dey deliver to Yaba?\""}]}
+                                               + tips.get("customer", "\"How much for Peak milk? I want 6 tins\", "
+                                                          "\"You go do discount if I buy 10 carton?\" "
+                                                          "or \"Una dey deliver to Yaba?\"")}]}
 
     @router.post("/{sid}/message")
     async def message(sid: str, m: DemoMessage):

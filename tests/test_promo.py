@@ -131,7 +131,7 @@ def test_instagram_then_facebook_publish_calls():
 
     pub = MetaPublisher(ig_user_id="178", page_id="555", token="tok", version="v21.0",
                         client=httpx.Client(transport=httpx.MockTransport(handler)))
-    assert pub.publish("https://demo.test/media/a.jpg", "caption") == {"instagram": "ig-post-9", "facebook": "fb-photo-3"}
+    assert pub.publish("https://demo.test/media/a.jpg", "caption") == ({"instagram": "ig-post-9", "facebook": "fb-photo-3"}, {})
     assert calls[0][0] == "/v21.0/178/media" and calls[0][1]["image_url"] == "https://demo.test/media/a.jpg"
     assert calls[1][1]["creation_id"] == "container1"
     assert calls[2][0] == "/v21.0/555/photos"
@@ -163,7 +163,7 @@ class FakePublisher:
 
     def publish(self, url, caption):
         self.published.append((url, caption))
-        return {"instagram": "ig-123"}
+        return {"instagram": "ig-123"}, {}
 
 
 @pytest.fixture
@@ -248,3 +248,69 @@ def test_whatsapp_preview_payload_has_image_header_and_buttons():
     p = build_payload("2348", "Post this?", [{"id": "ap:1:0", "title": "Post"}], image_url="https://demo.test/m.jpg")
     assert p["interactive"]["header"] == {"type": "image", "image": {"link": "https://demo.test/m.jpg"}}
     assert json.dumps(p)  # serialisable
+
+
+# --- sharing on WhatsApp ------------------------------------------------------------
+
+def _posted(store, services):
+    """Make and post a flyer; returns the agent and the 'Share it on WhatsApp too?' message."""
+    llm = ScriptedLLM([[("make_promo", {"product_id": "p-milk"})], "Peak milk ₦700 per tin #Lagos", ""])
+    agent = Agent(store, llm, OWNER, LIMIT, promo=services)
+    preview = next(o for o in agent.handle(sender=OWNER, text="post", image_data_url=shelf_photo()).outbox if o.buttons)
+    done = agent.handle(sender=OWNER, button_id=preview.buttons[0]["id"]).outbox
+    share = next(o for o in done if o.buttons)
+    assert [b["title"] for b in share.buttons] == ["My Status", "Recent customers", "Offer list"]
+    return agent, share
+
+
+def test_my_status_sends_her_the_flyer_to_forward(store, services):
+    agent, share = _posted(store, services)
+    out = agent.handle(sender=OWNER, button_id=share.buttons[0]["id"]).outbox
+    post = store.list_posts()[0]
+    assert out[0].to == OWNER and out[0].image_url == post["asset_url"] and out[0].body == post["caption"]
+    assert "My status" in out[1].body
+
+
+def test_recent_customers_get_it_only_after_she_sees_who_and_taps_send(store, services):
+    from datetime import timedelta
+    from app.ledger.store import now
+    store.set_contact_phone("c-chioma", "2348011111111")
+    store.touch_inbound("c-chioma")
+    store.set_contact_phone("c-tunde", "2348022222222")
+    store.touch_inbound("c-tunde", now() - timedelta(days=3))     # outside the 24-hour window
+    store.set_contact_phone("c-sule", "2348033333333")
+    store.touch_inbound("c-sule")
+    store.set_contact_offers("c-sule", False)                    # said stop
+    agent, share = _posted(store, services)
+    ask = agent.handle(sender=OWNER, button_id=share.buttons[1]["id"]).outbox[0]
+    assert "1 customer: Chioma" in ask.body and [b["title"] for b in ask.buttons] == ["Send", "Cancel"]
+    sent = agent.handle(sender=OWNER, button_id=ask.buttons[0]["id"]).outbox
+    assert [o.to for o in sent if o.image_url] == ["2348011111111"]
+    assert store.list_posts()[0]["platform_ids"]["whatsapp"] == 1
+
+
+def test_offer_list_uses_the_template_outside_the_window_and_only_with_consent(store, services):
+    from datetime import timedelta
+    from app.ledger.store import now
+    store.set_contact_phone("c-tunde", "2348022222222")
+    store.touch_inbound("c-tunde", now() - timedelta(days=3))
+    store.set_contact_offers("c-tunde", True)
+    store.set_contact_phone("c-chioma", "2348011111111")         # no answer about offers: never sent
+    agent, share = _posted(store, services)
+    ask = agent.handle(sender=OWNER, button_id=share.buttons[2]["id"]).outbox[0]
+    assert "Mama Tunde" in ask.body and "Chioma" not in ask.body and "fee" in ask.body
+    [msg] = [o for o in agent.handle(sender=OWNER, button_id=ask.buttons[0]["id"]).outbox if o.to != OWNER]
+    assert msg.template["name"] == "new_arrival" and msg.template["header_image"] == store.list_posts()[0]["asset_url"]
+    assert msg.body.startswith("New at Mama Nkechi Provisions: Peak milk tin, ₦700 per tin.")
+    from app.channels.whatsapp import build_payload
+    p = build_payload(msg.to, msg.body, template=msg.template)
+    assert p["template"]["components"][0]["type"] == "header"
+
+
+def test_stop_from_a_customer_takes_them_off_the_offer_list_without_the_model(store):
+    store.set_contact_phone("c-tunde", "2348022222222")
+    store.set_contact_offers("c-tunde", True)
+    llm = ScriptedLLM([])
+    out = Agent(store, llm, OWNER, LIMIT).handle(sender="2348022222222", text="STOP").outbox
+    assert store.get_contact("c-tunde").offers_ok is False and "no more offers" in out[0].body
+    assert llm.seen == []

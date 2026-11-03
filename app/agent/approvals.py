@@ -222,6 +222,12 @@ def handle_button(button_id, ctx):
         settle_post(a, option, ctx, ctx.promo)
         return True
 
+    if a["kind"] in ("share", "broadcast"):
+        from app.promo import share
+        ctx.store.answer_approval(aid, "approved", option["label"])
+        (share.settle_share if a["kind"] == "share" else share.settle_broadcast)(a, option, ctx)
+        return True
+
     if a["kind"] == "stock_gap":
         from app.agent.stocktake import settle_gap
         ctx.store.answer_approval(aid, "approved", option["label"])

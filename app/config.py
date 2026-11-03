@@ -35,6 +35,9 @@ class Settings:
     waba_id: str = _env("WABA_ID")   # WhatsApp Business Account id, only for creating the template
     reminder_template: str = _env("WA_REMINDER_TEMPLATE", "payment_reminder")
     reminder_template_lang: str = _env("WA_REMINDER_TEMPLATE_LANG", "en")
+    # Offers to customers who said yes, outside the 24-hour window: an approved marketing template
+    promo_template: str = _env("WA_PROMO_TEMPLATE", "new_arrival")
+    promo_template_lang: str = _env("WA_PROMO_TEMPLATE_LANG", "en")
 
     # Public "Try Sabi" demo at /demo/: per-visitor shops, with limits so it can't run up the model bill
     demo_enabled: bool = _env("DEMO_ENABLED", "1") == "1"
@@ -84,6 +87,7 @@ class Settings:
     owner_phone: str = _env("OWNER_PHONE")
     store: str = _env("STORE", "memory")
     shop_file: str = _env("SHOP_FILE")   # your shop (business info, products, contacts, opening stock); empty = demo shop
+    demo_shop: str = _env("DEMO_SHOP", "bookshop")   # the demo shop: "bookshop" or "provisions"
     demo_history: bool = _env("DEMO_HISTORY", "0") == "1"   # a week of demo trading for the demo shop (Postgres: first run only)
     database_url: str = _env("DATABASE_URL")
 

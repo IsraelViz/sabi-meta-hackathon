@@ -46,7 +46,9 @@ create table if not exists contacts (
   last_inbound_at timestamptz                  -- last message from them; WhatsApp's 24-hour window
 );
 alter table contacts add column if not exists last_inbound_at timestamptz;
+alter table contacts add column if not exists offers_ok boolean;   -- yes/stop to the shop's WhatsApp offers
 alter table products add column if not exists photo text;   -- the shop's own picture, sent to customers
+alter table products add column if not exists details jsonb not null default '{}';   -- books: author, edition, class...
 
 create table if not exists reminders (
   id          text primary key default gen_random_uuid()::text,
@@ -154,7 +156,8 @@ alter table businesses add column if not exists shop_info text not null default 
 alter table businesses add column if not exists links jsonb not null default '{}';      -- website, instagram, facebook, whatsapp
 alter table businesses add column if not exists knowledge jsonb not null default '[]';  -- approved page text, for shop_details
 alter table businesses add column if not exists profile_updated_at text;
-alter table businesses add column if not exists prefs jsonb not null default '{}';   -- her settings: summary time, tone, savings...
+alter table businesses add column if not exists prefs jsonb not null default '{}';
+alter table businesses add column if not exists booklists jsonb not null default '[]';   -- bookshops: lists of nearby schools   -- her settings: summary time, tone, savings...
 
 create table if not exists posts (
   id             text primary key default gen_random_uuid()::text,

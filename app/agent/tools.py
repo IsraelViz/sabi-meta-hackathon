@@ -9,13 +9,14 @@ from datetime import date
 from app import money
 from app.money import CURRENCIES
 from app import prefs as shop_prefs
-from app.agent import knowledge, onboarding, orders, payments, product_photos, reminders, sales, stocktake
+from app.agent import books, knowledge, onboarding, orders, payments, product_photos, reminders, sales, stocktake
 from app.agent.approvals import CANCEL, CONFIRM, buttons_for, describe, submit
 from app.ledger import reports
 from app.ledger.proposals import KINDS, Item, Proposal
 from app.ledger.validator import money_out, validate
 from app.media import documents
 from app.promo import flow as promo_flow
+from app.promo import share
 from app.normalize.amounts import naira
 from app.normalize.fuzzy import best_match, name_similarity
 
@@ -115,7 +116,15 @@ ADD_PRODUCTS = _fn(
         "unit": {"type": "string", "description": "what one is: piece, copy, bag, carton, pack, yard..."},
         "price_naira": {"type": "number", "description": "her selling price for one unit"},
         "qty_in_stock": {"type": ["integer", "null"]},
-        "cost_naira": {"type": ["number", "null"], "description": "what she paid for one, if said"}},
+        "cost_naira": {"type": ["number", "null"], "description": "what she paid for one, if said"},
+        "book": {"type": ["object", "null"], "description": "Books only: what she said about it",
+                 "properties": {"title": {"type": "string"}, "author": {"type": ["string", "null"]},
+                                "publisher": {"type": ["string", "null"]}, "edition": {"type": ["string", "null"]},
+                                "level": {"type": ["string", "null"], "description": "class, e.g. JSS1"},
+                                "subject": {"type": ["string", "null"]},
+                                "category": {"type": ["string", "null"], "enum": [
+                                    "textbook", "literature", "exam", "children", "novel", "religious",
+                                    "reference", "stationery", None]}}}},
         "required": ["name", "price_naira"]}}}, ["products"])
 STATEMENT = _fn("business_statement",
                 "Her business statement for a loan, microfinance or supplier credit: sales, profit, stock, cash, "
@@ -203,9 +212,44 @@ SEND_PHOTO = _fn("send_product_photo",
                  "when offering something similar, or when they ask to see it. Only for has_photo products.",
                  {"product_id": {"type": "string"}}, ["product_id"])
 
+_BOOKLIST_LINES = {"type": "array", "description": "Every book on the list, one per line, exactly as written",
+                   "items": {"type": "object", "properties": {
+                       "title": {"type": "string"},
+                       "author": {"type": ["string", "null"]},
+                       "edition": {"type": ["string", "null"], "description": "edition or year if the list says"},
+                       "level": {"type": ["string", "null"], "description": "class if the line says, e.g. JSS1"},
+                       "qty": {"type": ["integer", "null"], "description": "the number the list says: 2 for '2 dozen'"},
+                       "unit": {"type": ["string", "null"], "description": "the list's unit if it says one: dozen, piece, copy"}},
+                                 "required": ["title"]}}
+PRICE_BOOKLIST = _fn(
+    "price_booklist",
+    "Price a school booklist: each title is matched to the shelf at the right class and edition, priced from the "
+    "books, with what is missing. Pass the lines you read from their photo or message, with the school and class "
+    "if shown. With no lines, prices the list the shop keeps for that school and class.",
+    {"items": _BOOKLIST_LINES, "school": {"type": ["string", "null"]},
+     "level": {"type": ["string", "null"], "description": "the class the list is for: Primary 4, JSS1, SS2..."}})
+SET_OFFERS = _fn("set_offers",
+                 "The customer says yes to getting the shop's offers and new arrivals on WhatsApp, or asks to stop them.",
+                 {"opt_in": {"type": "boolean"}}, ["opt_in"])
+CLASS_BOOKS = _fn("class_books", "Every book the shop has for one class (optionally one subject), with prices.",
+                  {"level": {"type": "string"}, "subject": {"type": ["string", "null"]}}, ["level"])
+SAVE_BOOKLIST = _fn("save_booklist",
+                    "Keep a school's booklist (from her photo or message) so parents only need to say the school "
+                    "and class.", {"school": {"type": "string"}, "level": {"type": "string"},
+                                   "items": _BOOKLIST_LINES}, ["school", "level", "items"])
+TERM_RESTOCK = _fn("term_restock",
+                   "What books to order before schools resume: the next resumption date, what sold in the last "
+                   "resumption rush, what parents asked for that she lacked, old editions to clear, and order "
+                   "quantities.", {})
+IDENTIFY_PHOTO = _fn("identify_photo",
+                     "Which of her products is in the attached photo (a book cover, a pack): returns the product_id, "
+                     "stock and price. Use it before recording a sale or stock of 'this one'.", {})
+
 OWNER_TOOLS = [FIND_PRODUCT, FIND_CONTACT, RECORD, READ_DOC, BATCH, STOCK_TAKE, PROMO_IDEAS, MAKE_PROMO, LEARN, SHOP_INFO, STATEMENT, SETUP_PHOTO, ADD_PRODUCTS,
-               SEND_REMINDER, SET_PHONE, RECENT, REVERSE, REPORT, ASK, SET_PREFS, CHECK_PAYMENT, SCORE, MARKET, SAVE_PHOTO]
-CUSTOMER_TOOLS = [CUST_PRODUCT, MATCH_PHOTO, SEND_PHOTO, CREATE_ORDER, PAYMENT_CLAIM, MY_ORDERS, SHOP_DETAILS, HAND_TO_OWNER]
+               SEND_REMINDER, SET_PHONE, RECENT, REVERSE, REPORT, ASK, SET_PREFS, CHECK_PAYMENT, SCORE, MARKET, SAVE_PHOTO,
+               PRICE_BOOKLIST, CLASS_BOOKS, SAVE_BOOKLIST, TERM_RESTOCK, IDENTIFY_PHOTO]
+CUSTOMER_TOOLS = [CUST_PRODUCT, MATCH_PHOTO, SEND_PHOTO, CREATE_ORDER, PAYMENT_CLAIM, MY_ORDERS, SHOP_DETAILS, HAND_TO_OWNER,
+                  PRICE_BOOKLIST, CLASS_BOOKS, SET_OFFERS]
 
 
 def _kobo(naira_value):
@@ -215,7 +259,7 @@ def _kobo(naira_value):
 # --- owner handlers --------------------------------------------------------
 
 def find_product(ctx, query, customer=False):
-    scored = best_match(query, ctx.store.list_products(), lambda p: [p.name, *p.aliases])[:3]
+    scored = sorted(((books.score(query, p), p) for p in ctx.store.list_products()), key=lambda x: x[0], reverse=True)[:3]
     out = []
     for score, p in scored:
         if score < 0.5:
@@ -229,6 +273,7 @@ def find_product(ctx, query, customer=False):
         else:
             row.update(match=round(score, 2), stock=available, usual_price_range=
                        f"{naira(p.price_floor)}-{naira(p.price_ceiling)}")
+        row.update(books.facts(ctx.store, p, customer))
         out.append(row)
     return {"matches": out} if out else {"matches": [], "note": "no product matches; ask what they meant"}
 
@@ -533,6 +578,8 @@ OWNER_HANDLERS = {
     "add_products": onboarding.add_products,
     "set_preferences": set_preferences, "check_payment": payments.check_payment, "sabi_score": sabi_score,
     "market_prices": market_prices, "save_product_photo": product_photos.save_product_photo,
+    "price_booklist": books.price_booklist, "class_books": books.class_books, "save_booklist": books.save_booklist,
+    "term_restock": lambda ctx: books.term_restock(ctx), "identify_photo": product_photos.identify_for_owner,
 }
 def customer_find_product(ctx, query):
     result = find_product(ctx, query, customer=True)
@@ -549,6 +596,8 @@ CUSTOMER_HANDLERS = {
     "my_open_orders": my_open_orders,
     "shop_details": knowledge.shop_details,
     "hand_to_owner": sales.hand_to_owner,
+    "price_booklist": books.price_booklist, "class_books": books.class_books,
+    "set_offers": lambda ctx, opt_in: share.set_offers(ctx, opt_in),
 }
 
 

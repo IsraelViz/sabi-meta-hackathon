@@ -10,6 +10,7 @@ a cost would make her profit wrong, so she is told instead.
 import re
 
 from app.agent.approvals import buttons_for
+from app.agent.books import level_of
 from app.ledger.model import Entry, Line, Product, StockMove
 from app.ledger.store import new_id
 from app.normalize.amounts import naira
@@ -58,7 +59,10 @@ def plan(store, rows):
     new, changes, same = [], [], []
     products = store.list_products()
     for r in rows:
-        scored = best_match(r["name"], products, lambda p: [p.name, *p.aliases])
+        # The same title for another class is another book: JSS2 maths is not a new price for JSS1 maths.
+        level = level_of(r["name"])
+        scored = best_match(r["name"], [p for p in products if not level or level_of(p.name) in (None, level)],
+                            lambda p: [p.name, *p.aliases])
         if scored and scored[0][0] >= SAME_PRODUCT:
             prod = scored[0][1]
             if prod.sell_price_kobo != r["price_kobo"]:
@@ -85,6 +89,16 @@ def setup_from_photo(ctx):
     return _offer(ctx, rows, unreadable, "From your photo")
 
 
+def _book_details(book):
+    if not isinstance(book, dict) or not str(book.get("title") or "").strip():
+        return {}
+    d = {k: str(v).strip()[:80] for k, v in book.items() if v and k in
+         ("title", "author", "publisher", "edition", "level", "subject", "category")}
+    if d.get("level"):
+        d["level"] = level_of(d["level"]) or d["level"]
+    return d
+
+
 def add_products(ctx, products):
     """Owner tool: products she named in a message (a new shop starts with none). She approves the list first."""
     rows = []
@@ -98,7 +112,8 @@ def add_products(ctx, products):
         qty = p.get("qty_in_stock")
         qty = int(qty) if isinstance(qty, (int, float)) and qty > 0 and float(qty).is_integer() else None
         rows.append({"name": name[:60], "unit": (str(p.get("unit") or "piece").strip().lower() or "piece")[:20],
-                     "price_kobo": price, "qty": qty, "cost_kobo": _kobo(p.get("cost_naira"))})
+                     "price_kobo": price, "qty": qty, "cost_kobo": _kobo(p.get("cost_naira")),
+                     "details": _book_details(p.get("book"))})
     if not rows:
         return {"error": "no products given"}
     return _offer(ctx, rows, [], "To add")
@@ -148,7 +163,8 @@ def settle_catalog(a, option, ctx):
     for n in p["new"]:
         pid = _product_id(ctx.store, n["name"])
         ctx.store.add_product(Product(id=pid, name=n["name"], base_unit=n["unit"], sell_price_kobo=n["price_kobo"],
-                                      aliases=[n["name"].lower()], avg_cost_kobo=0, reorder_level=2))
+                                      aliases=[n["name"].lower()], avg_cost_kobo=0, reorder_level=2,
+                                      details=n.get("details") or {}))
         added.append(n["name"])
         if n.get("stock_ok"):
             value = n["qty"] * n["cost_kobo"]
