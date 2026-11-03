@@ -931,8 +931,8 @@ function login(message) {
   setShop("Sabi");
   view.innerHTML = `<div class="login card">
     <h1>Open your shop</h1>
-    <p style="color:var(--muted)">Sign in with your WhatsApp number and your PIN or password.</p>
-    <label for="in-phone">WhatsApp number</label>
+    <p style="color:var(--muted)">Sign in with your phone number and your PIN or password.</p>
+    <label for="in-phone">Phone number</label>
     <input id="in-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="0803 123 4567">
     <label for="in-secret">PIN or password</label>
     <input id="in-secret" type="password" autocomplete="current-password">

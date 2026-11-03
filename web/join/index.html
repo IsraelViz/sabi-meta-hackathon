@@ -110,9 +110,9 @@
         </div></div>
       <label class="field"><span>Your name</span>
         <input type="text" id="owner_name" placeholder="e.g. Ife" autocomplete="given-name"></label>
-      <label class="field"><span>Your WhatsApp number</span>
+      <label class="field"><span>Your phone number</span>
         <input type="tel" id="phone" placeholder="0803 123 4567" autocomplete="tel" inputmode="tel">
-        <small id="phone-note">You'll sign in with this number.</small></label>
+        <small id="phone-note">You'll sign in with this number. Sabi won't send messages to it: you chat with Sabi in the app.</small></label>
     </div>
 
     <div class="step" data-step="2" hidden>
@@ -188,8 +188,8 @@
   <!-- ===================== sign in ===================== -->
   <section id="signin" class="card" hidden>
     <h1>Welcome back</h1>
-    <p class="lead">Sign in with your WhatsApp number and your PIN or password.</p>
-    <label class="field"><span>Your WhatsApp number</span>
+    <p class="lead">Sign in with your phone number and your PIN or password.</p>
+    <label class="field"><span>Your phone number</span>
       <input type="tel" id="in-phone" placeholder="0803 123 4567" autocomplete="tel" inputmode="tel"></label>
     <label class="field"><span>PIN or password</span>
       <input type="password" id="in-secret" autocomplete="current-password"></label>
@@ -246,10 +246,10 @@ $("#phone").addEventListener("input", () => {
   phoneTimer = setTimeout(async () => {
     const v = $("#phone").value.trim(), note = $("#phone-note");
     phoneTaken = false;
-    if (v.replace(/\D/g, "").length < 10) { note.textContent = "You'll sign in with this number."; note.className = ""; return; }
+    if (v.replace(/\D/g, "").length < 10) { note.textContent = "You'll sign in with this number. Sabi won't send messages to it: you chat with Sabi in the app."; note.className = ""; return; }
     try {
       const r = await (await fetch(`/join/api/phone?phone=${encodeURIComponent(v)}`)).json();
-      if (!r.valid) { note.textContent = "That number doesn't look right. Use the one on your WhatsApp."; note.className = "err"; }
+      if (!r.valid) { note.textContent = "That number doesn't look right, e.g. 0803 123 4567."; note.className = "err"; }
       else if (r.taken) { phoneTaken = true; note.innerHTML = `This number already has a Sabi shop. <a href="#signin" id="go-signin">Sign in instead</a>`;
         note.className = "err"; $("#go-signin").onclick = e => { e.preventDefault(); $("#in-phone").value = v; tab("signin"); }; }
       else { note.textContent = "✓ Good. You'll sign in with this number."; note.className = "ok"; }
@@ -340,7 +340,7 @@ function check(n) {
   if (n === 1) {
     if ($("#shop_name").value.trim().length < 2) return "What is your shop called?";
     if (!$("#owner_name").value.trim()) return "What's your name?";
-    if ($("#phone").value.replace(/\D/g, "").length < 10) return "Add your WhatsApp number.";
+    if ($("#phone").value.replace(/\D/g, "").length < 10) return "Add your phone number.";
     if (phoneTaken) return "This number already has a Sabi shop. Sign in instead.";
   }
   if (n === 4) {
