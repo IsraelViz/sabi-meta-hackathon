@@ -37,6 +37,19 @@ NOT_DONE = "Sorry, I couldn't finish that. Please send it again."
 
 
 
+STYLE = {
+    "auto": "Tone: read each message and match it. Formal or business-like writing (full sentences, \"Good afternoon, "
+            "kindly...\", \"Dear\", a school, company, bank or supplier, a complaint, a serious question about money) gets "
+            "a professional reply: polite, clear and warm, no slang, jokes or proverbs, at most one simple emoji. Casual "
+            "writing (Pidgin, slang, emojis, \"abeg\", \"oya\", short chatty texts) gets the lively personality. When "
+            "unsure, be warm and professional. Follow their lead as it changes, message by message.",
+    "professional": "Tone: always professional, as the shop has chosen: polite, clear and warm, no slang, jokes or "
+                    "proverbs, and no emojis except ✅ on a confirmation. Still reply in the language they write.",
+    "playful": "Tone: always the lively personality, as the shop has chosen; still calm and kind when something has "
+               "gone wrong.",
+}
+
+
 def _system_prompt(persona, store, customer_name=None, owner_said=None):
     business = getattr(store, "business", {})
     text = (PROMPTS / f"{persona}.md").read_text(encoding="utf-8")
@@ -47,7 +60,9 @@ def _system_prompt(persona, store, customer_name=None, owner_said=None):
                       + ". Stay consistent with it; if it needs something your tools can't do (like a special "
                         "price), use `hand_to_owner`.")
     from app import prefs
-    return text.format(shop=business.get("name", "the shop"), today=date.today().strftime("%A %d %B %Y"),
+    shop_prefs = prefs.get(store)
+    style = STYLE[shop_prefs["style" if persona == "owner" else "customer_style"]]
+    return text.format(style=style, shop=business.get("name", "the shop"), today=date.today().strftime("%A %d %B %Y"),
                        language=prefs.get(store)["language"], currency=money.describe(money.of(store)),
                        money_sign=money.of(store).fmt(1_250_000),
                        customer=customer_name or "unknown", owner_note=owner_note,

@@ -143,7 +143,8 @@ SHOP_INFO = _fn("update_shop_info",
 
 SET_PREFS = _fn(
     "set_preferences",
-    "Change her settings when she asks: when her summary comes (every day, once a week, or off; the hour; the day), "
+    "Change her settings when she asks: how you sound (style: 'be more professional', 'you can play with me'), "
+    "how you sound to customers (customer_style), when her summary comes (every day, once a week, or off; the hour; the day), "
     "the language of her messages and summaries, the money her books are kept in, how payment reminders sound, how much of her profit to put aside and her savings goal, low-data mode, "
     "and whether her Sabi Score shows on her statement or her supplier prices are shared (anonymously) with other shops. "
     "Only pass what she asked to change.",
@@ -151,6 +152,10 @@ SET_PREFS = _fn(
      "summary_hour": {"type": ["integer", "null"], "description": "24-hour clock, 5 to 23. 7 am = 7, 8 pm = 20"},
      "summary_weekday": {"type": ["string", "null"], "enum": [*shop_prefs.WEEKDAYS, None]},
      "reminder_tone": {"type": ["string", "null"], "enum": [*shop_prefs.TONES, None]},
+     "style": {"type": ["string", "null"], "enum": [*shop_prefs.STYLES, None],
+               "description": "how you talk to her: auto (match each message), professional, or playful"},
+     "customer_style": {"type": ["string", "null"], "enum": [*shop_prefs.STYLES, None],
+                        "description": "how you talk to her customers: auto, professional, or playful"},
      "language": {"type": ["string", "null"],
                   "description": "the language she wants Sabi's messages and summaries in, in English: 'French', "
                                  "'Swahili', 'Pidgin'... or 'auto' to follow whatever she writes"},
@@ -529,7 +534,8 @@ def set_preferences(ctx, **a):
         savings["name"] = a["savings_name"]
     if savings:
         changes["savings"] = savings
-    for k in ("reminder_tone", "language", "currency", "low_data", "share_score", "share_prices"):
+    for k in ("reminder_tone", "language", "currency", "low_data", "share_score", "share_prices", "style",
+              "customer_style"):
         if a.get(k) is not None:
             changes[k] = a[k]
     if not changes:

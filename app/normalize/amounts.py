@@ -201,3 +201,12 @@ def normalize(text):
         pos = m.end
     out.append(text[pos:])
     return Normalized(original, "".join(out), mentions)
+
+
+def units(n, unit):
+    """'1 copy', '3 copies', '2 boxes', '5 tins'."""
+    if n == 1 or not unit:
+        return unit
+    if unit.endswith("y") and unit[-2:-1] not in "aeiou":
+        return unit[:-1] + "ies"
+    return unit + ("es" if unit.endswith(("x", "s", "ch", "sh")) else "s")

@@ -48,3 +48,23 @@ def test_the_nigerian_voice_gets_amounts_and_refs_it_can_say():
 def test_the_mms_voice_makes_a_whatsapp_voice_note():
     ogg = speech.mms.voice_note("Good morning. Your list is ready: ₦42,000.")
     assert ogg[:4] == b"OggS" and len(ogg) > 5000
+
+
+# --- tone: matched to each message, or fixed by the owner ---------------------------
+
+def test_tone_follows_her_setting_for_her_and_for_customers(store):
+    from app import prefs
+    from app.agent.orchestrator import _system_prompt
+    assert "read each message and match it" in _system_prompt("owner", store)
+    prefs.save(store, {"style": "professional", "customer_style": "playful"})
+    assert "always professional" in _system_prompt("owner", store)
+    assert "always the lively personality" in _system_prompt("customer", store)
+    assert prefs.save(store, {"style": "rude"})[1]          # not a style: refused, nothing saved
+    assert prefs.get(store)["style"] == "professional"
+
+
+def test_she_changes_the_tone_by_asking(store):
+    llm = ScriptedLLM([[("set_preferences", {"style": "professional"})], "Understood."])
+    Agent(store, llm, OWNER, 10**9).handle(sender=OWNER, text="Please always be professional with me")
+    from app import prefs
+    assert prefs.get(store)["style"] == "professional"

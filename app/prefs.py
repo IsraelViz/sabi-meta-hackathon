@@ -7,6 +7,7 @@ from app.money import CURRENCIES
 
 FREQUENCIES = ("daily", "weekly", "off")
 TONES = ("gentle", "firm", "pidgin")
+STYLES = ("auto", "professional", "playful")   # how Sabi sounds; auto reads each message
 WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 LANGUAGE_NAME = re.compile(r"^[^\W\d_][^\W\d_ '-]*(?:[ '-][^\W\d_]+){0,2}$")   # "French", "Nigerian Pidgin"
 LATE_BY = 3            # a summary missed by more than 3 hours (server off) is skipped, not sent at midnight
@@ -19,6 +20,8 @@ DEFAULTS = {
     "savings": {"percent": 0, "goal_kobo": 0, "name": "Savings"},
     "low_data": False,
     "voice_replies": False,   # every answer also as a voice note
+    "style": "auto",            # how Sabi talks to her
+    "customer_style": "auto",   # how Sabi talks to her customers
     "share_score": True,      # show the Sabi Score on the statement she sends a lender
     "share_prices": False,    # add her supplier prices, anonymously, to what other Sabi shops see
 }
@@ -61,6 +64,8 @@ def save(store, changes):
                 else:
                     errors.append(f"savings {k} can't be {v!r}")
         elif key == "reminder_tone" and value in TONES:
+            new[key] = value
+        elif key in ("style", "customer_style") and value in STYLES:
             new[key] = value
         elif key == "language" and isinstance(value, str) and LANGUAGE_NAME.match(value.strip()):
             v = value.strip()

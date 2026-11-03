@@ -8,17 +8,9 @@ from datetime import timedelta
 from app.agent.approvals import buttons_for
 from app.ledger.reports import restock_advice
 from app.ledger.store import now
-from app.normalize.amounts import naira
+from app.normalize.amounts import naira, units
 
 QUIET_FOR = timedelta(hours=24)
-
-
-def _units(n, unit):
-    if n == 1:
-        return unit
-    if unit.endswith("y") and unit[-2:-1] not in "aeiou":
-        return unit[:-1] + "ies"          # copy -> copies
-    return unit + ("es" if unit.endswith(("x", "s", "ch", "sh")) else "s")   # box -> boxes, tin -> tins
 
 
 def after_sale(ctx, entry):
@@ -34,7 +26,8 @@ def after_sale(ctx, entry):
         source = (f" Last time you bought from {last['supplier']} at {naira(last['unit_cost_kobo'])}."
                   if last and last["supplier"] else
                   f" Last time you paid {naira(last['unit_cost_kobo'])}." if last else "")
-        text = (f"📦 {r['name']}: only {r['stock']} {_units(r['stock'], r['unit'])} left.{pace}{source}"
+        left = "sold out" if r["stock"] <= 0 else f"only {r['stock']} {units(r['stock'], r['unit'])} left"
+        text = (f"📦 {r['name']}: {left}.{pace}{source}"
                 f" Order {r['order_qty']}?")
         a = ctx.store.add_approval("restock", {"product_id": pid, "qty": r["order_qty"],
                                                "supplier_id": last["supplier_id"] if last else None},

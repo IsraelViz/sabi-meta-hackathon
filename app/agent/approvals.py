@@ -11,7 +11,7 @@ from app.ledger.reports import headline_kobo
 from app.ledger.store import now
 from app.ledger.model import LedgerError
 from app.ledger.proposals import Proposal, apply_patch
-from app.normalize.amounts import naira, read_amounts
+from app.normalize.amounts import naira, read_amounts, units
 from app.normalize.fuzzy import best_match, name_similarity
 
 CONFIRM = {"label": "Confirm", "patch": [], "confirm": True}
@@ -35,7 +35,7 @@ def describe(p: Proposal, store):
             name = prod.name if prod else it.product_id
             unit = prod.base_unit if prod else ""
             price = f" @ {naira(it.unit_price_kobo)}" if it.unit_price_kobo is not None else ""
-            parts.append(f"{it.qty} {unit} {name}{price}")
+            parts.append(f"{it.qty} {units(it.qty, unit)} {name}{price}")
         text = ", ".join(parts)
         total = f", total {naira(p.items_total_kobo)}" if all(i.unit_price_kobo is not None for i in p.items) else ""
     else:
