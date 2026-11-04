@@ -112,7 +112,8 @@ async def _run(shops, shop, chat, kwargs, shown, image, sender_name=None, channe
     ctx = await asyncio.to_thread(handle)
     latency = int((time.monotonic() - started) * 1000)
     # Her replies reach her WhatsApp too when she is writing from it, or wrote from it in the last day.
-    owner_wa = (channel == "whatsapp") if chat == OWNER else time.time() - _owner_wrote.get(shop.id, 0) < 86400
+    wrote, _ = _owner_wrote.get(shop.id, (0, None))
+    owner_wa = (channel == "whatsapp") if chat == OWNER else time.time() - wrote < 86400
     await _deliver(shops, shop, ctx.outbox, owner_wa, tools=[c["tool"] for c in ctx.tool_log], latency_ms=latency,
                    notify=chat != OWNER)
     return first
@@ -120,7 +121,7 @@ async def _run(shops, shop, chat, kwargs, shown, image, sender_name=None, channe
 
 # --- one shop answers the WhatsApp number (WA_SHOP) -----------------------------------------
 
-_owner_wrote: dict[str, float] = {}     # shop id -> when she last wrote from her own WhatsApp
+_owner_wrote: dict[str, tuple] = {}     # shop id -> (when, from which number) she last wrote on WhatsApp
 
 
 def answers_whatsapp(shop):
@@ -153,7 +154,7 @@ async def _deliver(shops, shop, outbox, owner_wa, **kw):
                 shop.store.update_reminder(o.reminder_id, status="sent")
             continue
         if o.to == OWNER and owner_wa and answers_whatsapp(shop):
-            await _whatsapp(o, shops.row(shop.id)["owner_phone"])
+            await _whatsapp(o, _owner_wrote.get(shop.id, (0, None))[1] or shops.row(shop.id)["owner_phone"])
         rest.append(o)
     shops.deliver(shop, rest, **kw)
 
@@ -166,9 +167,10 @@ async def from_whatsapp(shops, msg):
     if shop is None:
         log.error("WA_SHOP %r is not a shop's link name", settings.wa_shop)
         return
-    chat = OWNER if msg.sender == shops.row(shop.id)["owner_phone"] else msg.sender
+    # Her sign-up number, or OWNER_PHONE: the number that runs the shop on WhatsApp when hers is taken.
+    chat = OWNER if msg.sender in (shops.row(shop.id)["owner_phone"], settings.owner_phone) else msg.sender
     if chat == OWNER:
-        _owner_wrote[shop.id] = time.time()
+        _owner_wrote[shop.id] = (time.time(), msg.sender)
     try:
         if msg.kind == "text":
             m = ChatIn.model_construct(text=msg.text)

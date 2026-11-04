@@ -335,3 +335,9 @@ def test_whatsapp_number_answers_as_her_shop(shops, monkeypatch):
     asyncio.run(pilot.from_whatsapp(shops, whatsapp.Inbound("m2", "2348031112222", "text", text="how far today?")))
     assert sent == [("2348031112222", "Ehen! You never sell anything today.")]
     assert c.get("/api/chat", headers=as_owner(key)).json()["messages"][-1]["body"] == "Ehen! You never sell anything today."
+    # OWNER_PHONE runs the shop on WhatsApp too, when the owner's own number is taken.
+    monkeypatch.setattr(pilot, "settings", dataclasses.replace(pilot.settings, owner_phone="2347015065065"))
+    use(shops, row["id"], ["Still nothing sold today."])
+    sent.clear()
+    asyncio.run(pilot.from_whatsapp(shops, whatsapp.Inbound("m3", "2347015065065", "text", text="sales today?")))
+    assert sent == [("2347015065065", "Still nothing sold today.")]
