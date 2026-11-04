@@ -48,8 +48,7 @@ function toast(text) {
 function bubble(m) {
   const el = document.createElement("div");
   el.className = `msg ${m.role === "in" ? "me" : m.role === "note" ? "note" : "them"}`;
-  el.innerHTML = `${m.image ? `<img alt="" src="${esc(m.image)}">` : ""}${m.body ? linkify(waFormat(esc(m.body))) : ""}
-    <div class="when">${m.at ? new Date(m.at).toLocaleTimeString("en-NG", { hour: "numeric", minute: "2-digit" }) : ""}</div>`;
+  el.innerHTML = `${m.image ? `<img alt="" src="${esc(m.image)}">` : ""}${m.body ? `<div class="body">${linkify(waFormat(esc(m.body)))}</div>` : ""}<div class="when">${m.at ? new Date(m.at).toLocaleTimeString("en-NG", { hour: "numeric", minute: "2-digit" }) : ""}</div>`;
   return el;
 }
 

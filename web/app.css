@@ -225,8 +225,17 @@ body.chatting { padding-bottom: calc(136px + env(safe-area-inset-bottom)); }
 .chat-log { display: flex; flex-direction: column; gap: 8px; padding-bottom: 8px; }
 .msg {
   max-width: 85%; padding: 8px 12px 4px; border-radius: 16px; background: var(--card); box-shadow: var(--shadow);
-  white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.4;
+  overflow-wrap: anywhere; font-size: 15px; line-height: 1.4;
 }
+.msg .body { white-space: pre-wrap; }
+.msg .voice { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.msg .voice .ico { width: 18px; height: 18px; }
+.msg .voice .play {
+  flex: none; display: grid; place-items: center; width: 34px; height: 34px; border: 0; border-radius: 50%;
+  background: rgba(255, 255, 255, .22); color: inherit; cursor: pointer;
+}
+.msg .voice .play .ico { width: 16px; height: 16px; }
+.msg .heard { margin-top: 6px; font-size: 14px; font-style: italic; opacity: .9; }
 .msg.them { align-self: flex-start; border-bottom-left-radius: 4px; }
 .msg.me { align-self: flex-end; background: var(--accent); color: var(--accent-ink); border-bottom-right-radius: 4px; }
 .msg.me a { color: inherit; }

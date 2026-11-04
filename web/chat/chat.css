@@ -23,7 +23,7 @@ button { font: inherit; color: inherit; }
 .name { font-weight: 700; }
 .sub { font-size: 13px; opacity: .85; }
 .log { max-width: 640px; margin: 0 auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
-.msg { max-width: 85%; padding: 8px 12px 4px; border-radius: 12px; background: var(--card); white-space: pre-wrap;
+.msg { max-width: 85%; padding: 8px 12px 4px; border-radius: 12px; background: var(--card); 
   overflow-wrap: anywhere; font-size: 15px; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
 .msg.them { align-self: flex-start; border-top-left-radius: 4px; }
 .msg.me { align-self: flex-end; background: var(--me); border-top-right-radius: 4px; }

@@ -47,8 +47,7 @@ function addBubble(who, cls, { body = "", image = null, buttons = [], meta = "" 
   const chat = $(".chat", phones[who]);
   const el = document.createElement("div");
   el.className = `msg ${cls}`;
-  el.innerHTML = `${image ? `<img alt="" src="${esc(image)}">` : ""}${linkify(waFormat(esc(body)))}
-    ${meta ? `<div class="meta">${esc(meta)}</div>` : ""}`;
+  el.innerHTML = `${image ? `<img alt="" src="${esc(image)}">` : ""}<div class="body">${linkify(waFormat(esc(body)))}</div>${meta ? `<div class="meta">${esc(meta)}</div>` : ""}`;
   if (buttons.length) {
     const box = document.createElement("div");
     box.className = "btns";

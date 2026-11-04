@@ -6,6 +6,7 @@
   const ICONS = {
     camera: svg('<path d="M3.5 8.5a1.5 1.5 0 0 1 1.5-1.5h2.2l1.6-2.2h6.4l1.6 2.2H19a1.5 1.5 0 0 1 1.5 1.5v9.5A1.5 1.5 0 0 1 19 19.5H5A1.5 1.5 0 0 1 3.5 18z"/><circle cx="12" cy="13" r="3.6"/>'),
     mic: svg('<rect x="9" y="3" width="6" height="11.5" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21"/>'),
+    play: svg('<path d="M8 5.5v13l10.5-6.5z" fill="currentColor" stroke="none"/>'),
     stop: svg('<rect x="7" y="7" width="10" height="10" rx="2.2" fill="currentColor" stroke="none"/>'),
     // Talk mode: a live sound wave, so it reads as "conversation", not "record a note"
     talk: svg('<path d="M3.5 12h1M7 9v6M10.5 6v12M14 8.5v7M17.5 10v4M20.5 12h0"/>'),

@@ -757,6 +757,17 @@ function markAnswered(id) {
   try { localStorage.setItem(ANSWERED, JSON.stringify([...s].slice(-300))); } catch { /* private mode */ }
 }
 
+const VOICE = {};   // message id -> her recording, kept on this phone so she can play it back
+
+function voiceNote(m) {
+  const heard = /^🎙\s*“([\s\S]*)”$/.exec(m.body || "");
+  if (m.role !== "in" || !(heard || m.audio)) return null;
+  const url = m.audio || VOICE[m.id];
+  return `<div class="voice">${url ? `<button class="play" type="button" data-play aria-label="Play">${SabiIcon("play")}</button>`
+    : SabiIcon("mic")}<span>Voice note</span></div>
+    <div class="body heard">${heard ? `“${esc(heard[1])}”` : "Listening…"}</div>`.replace(/\n\s*/g, "");
+}
+
 function bubble(m) {
   const done = answered().has(m.id);
   const el = document.createElement("div");
@@ -764,7 +775,8 @@ function bubble(m) {
   el.dataset.id = m.id;
   const photo = m.image ? (ME?.low_data && m.id ? `<button class="load-photo" data-src="${esc(m.image)}">📷 Tap to load photo</button>`
     : `<img alt="" src="${esc(m.image)}">`) : "";
-  el.innerHTML = `${photo}${m.body ? `<div class="body">${linkify(waFormat(esc(m.body)))}</div>` : ""}
+  const voice = voiceNote(m);
+  el.innerHTML = `${photo}${voice || (m.body ? `<div class="body">${linkify(waFormat(esc(m.body)))}</div>` : "")}
     ${m.buttons?.length ? `<div class="btns">${m.buttons.map(b =>
       `<button data-bid="${esc(b.id)}" ${done ? "disabled" : ""}>${esc(b.title)}</button>`).join("")}</div>` : ""}
     <div class="when">${m.at ? new Date(m.at).toLocaleTimeString("en-NG", { hour: "numeric", minute: "2-digit" }) : ""}
@@ -772,6 +784,11 @@ function bubble(m) {
       ${m.role === "out" ? `<button class="flag" data-flag="${m.id}" title="Something wrong with this reply?">👎</button>` : ""}</div>
     ${m.role === "out" && m.image ? `<button class="btn ghost share-pic" type="button">Share to Instagram / Status ↗</button>` : ""}`;
   el.querySelector("[data-say]")?.addEventListener("click", () => say(m.body));
+  el.querySelector("[data-play]")?.addEventListener("click", ev => {
+    const btn = ev.currentTarget, audio = btn.audio || (btn.audio = new Audio(m.audio || VOICE[m.id]));
+    audio.onended = audio.onpause = () => (btn.innerHTML = SabiIcon("play"));
+    if (audio.paused) { audio.play(); btn.innerHTML = SabiIcon("stop"); } else { audio.pause(); audio.currentTime = 0; }
+  });
   el.querySelector(".share-pic")?.addEventListener("click", ev => sharePicture(m.image, captionOf(m.body), ev.currentTarget));
   el.querySelector(".load-photo")?.addEventListener("click", ev => {
     ev.currentTarget.outerHTML = `<img alt="" src="${esc(ev.currentTarget.dataset.src)}">`;
@@ -826,11 +843,11 @@ function showMessages(list) {
   try { localStorage.setItem("sabi.seen", String(chatLast)); } catch { /* private mode */ }
 }
 
-async function chatSend(payload, shown, image) {
+async function chatSend(payload, shown, image, audio) {
   if (chatBusy) { toast("One moment, Sabi is still answering."); return; }
   chatBusy = true;
   const log = $("#log");
-  const pending = bubble({ id: 0, role: "in", body: shown, image, buttons: [] });
+  const pending = bubble({ id: 0, role: "in", body: shown, image, audio, buttons: [] });
   pending.classList.add("pending");
   log.appendChild(pending);
   log.insertAdjacentHTML("beforeend", `<div class="typing">Sabi is typing…</div>`);
@@ -838,6 +855,8 @@ async function chatSend(payload, shown, image) {
   try {
     const r = await send("POST", "/api/chat", payload);
     pending.remove(); $(".typing", log)?.remove();
+    const mine = audio && r.messages.find(x => x.role === "in");
+    if (mine) VOICE[mine.id] = audio;
     showMessages(r.messages);
     return r.messages;
   } catch (e) {
@@ -963,7 +982,7 @@ To start, send a photo 📷 of your price list, or type your products and prices
         const blob = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
         rec = null;
         if (blob.size < 1500) { toast("That was too short. Tap the microphone, talk, then tap it again."); return; }
-        chatSend({ audio: await blobToDataUrl(blob) }, "🎙 Voice note…");
+        chatSend({ audio: await blobToDataUrl(blob) }, "", null, URL.createObjectURL(blob));
       };
       rec.start();
       mic.classList.add("rec"); mic.innerHTML = SabiIcon("stop");
