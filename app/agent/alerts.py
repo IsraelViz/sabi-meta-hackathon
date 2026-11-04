@@ -21,7 +21,8 @@ def after_sale(ctx, entry):
         r = restock_advice(ctx.store, pid)
         if not r["due"]:
             continue
-        pace = f" At your pace ({r['per_day']:g} a day) that's about {r['days_left']:g} days." if r["days_left"] else ""
+        days = max(1, round(r["days_left"])) if r["days_left"] else None
+        pace = f" At your pace that's about {days} day{'s' if days != 1 else ''}." if days else ""
         last = r["last_purchase"]
         source = (f" Last time you bought from {last['supplier']} at {naira(last['unit_cost_kobo'])}."
                   if last and last["supplier"] else

@@ -196,3 +196,45 @@ def test_insights_say_what_the_books_say(shop):
     assert i["forecast"]["kind"] == "school_term" and i["forecast"]["items"][0]["name"] == "Civic Education JSS1"
     assert any("Mama Tunde owes ₦32,500" in t for t in i["takeaways"])
     assert all(any(ch.isdigit() for ch in t) for t in i["takeaways"])   # every sentence carries its numbers
+
+
+def test_hello_gets_a_look_at_the_shop_and_three_next_steps_without_the_model(shop):
+    shop.business = {**shop.business}
+    llm = ScriptedLLM([])
+    agent = Agent(shop, llm, OWNER, 10**9)
+    out = agent.handle(sender=OWNER, text="Hello Sabi!").outbox
+    assert llm.seen == []                                      # instant, from the books
+    body = out[0].body
+    assert "Here's Nkechi Books & Stationery today" in body and "Mama Tunde owes ₦32,500" in body
+    assert "Civic Education JSS1 is sold out" in body and "—" not in body
+    assert [b["title"] for b in out[0].buttons] == ["Record a sale", "How's business?", "What to order?"]
+    # A button sends its words to Sabi as if she typed them
+    llm.turns.append([("business_insights", {})])
+    llm.turns.append("Your week is quiet but fine.")
+    agent.handle(sender=OWNER, button_id="hello:insights", button_title="How's business?")
+    assert any(m.get("content") == "How is my business doing?" for m in llm.seen[0][0])
+
+
+def test_a_greeting_with_news_still_goes_to_sabi():
+    from app.agent.greeting import is_greeting
+    assert is_greeting("good morning o") and is_greeting("How far") and is_greeting("Hi 👋")
+    assert not is_greeting("hi, I sold 2 Things Fall Apart") and not is_greeting("hello how much profit today")
+
+
+def test_every_entry_comes_back_with_what_the_books_now_say(shop):
+    from app.ledger.nudges import after
+    from app.ledger.posting import commit_proposal
+    from app.ledger.proposals import Item, Proposal
+    for _ in range(2):    # two sales today
+        p = Proposal(kind="sale", items=[Item("b-tfa", 1, 350_000)], paid_kobo=350_000, payment_account="cash")
+        entry, _ = commit_proposal(p, shop, 10**12, approved=True)
+    said = after(entry, shop)
+    assert "That's your 2nd sale today: ₦7,000 so far." in said
+    assert any(s.startswith("That's your ") and "sale today" in s for s in said)
+    assert any(s.startswith("You made ₦") and "margin" in s for s in said)
+    credit = Proposal(kind="sale", items=[Item("b-eze", 1, 200_000)], contact_id="c-chioma", paid_kobo=0, credit_ok=True)
+    entry, _ = commit_proposal(credit, shop, 10**12, approved=True)
+    assert any("Chioma" in s and "owes ₦2,000" in s for s in after(entry, shop))
+    pay = Proposal(kind="payment_in", contact_id="c-tunde", amount_kobo=2_000_000, payment_account="bank")
+    entry, _ = commit_proposal(pay, shop, 10**12, approved=True)
+    assert after(entry, shop)[0] == "Mama Tunde still owes ₦12,500."

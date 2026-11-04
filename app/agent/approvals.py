@@ -80,8 +80,10 @@ def submit(p: Proposal, ctx, approved=False):
         if entry.kind == "sale":
             from app.agent.alerts import after_sale
             after_sale(ctx, entry)
+        from app.ledger.nudges import after
+        insight = after(entry, ctx.store)
         return {"status": "committed", "entry_id": entry.id, "summary": describe(p, ctx.store),
-                "notes": verdict.notes, **_stock_after(p, ctx.store)}
+                "notes": verdict.notes, **_stock_after(p, ctx.store), **({"insight": insight} if insight else {})}
     if verdict.errors:
         return {"status": "rejected", "errors": verdict.errors}
     if _already_asked(p, ctx.store):

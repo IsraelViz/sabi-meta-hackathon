@@ -160,11 +160,11 @@ def test_admin_creates_shops_reads_chats_and_replaces_keys(shops):
     key = made["join_url"].split("#key=")[1]
     assert made["chat_url"].endswith("/c/tolu-stores")
     use(shops, made["shop"]["id"], ["Hello Tolu!"])
-    c.post("/api/chat", headers=as_owner(key), json={"text": "hello"})
+    c.post("/api/chat", headers=as_owner(key), json={"text": "hello, any news?"})
     c.post("/api/feedback", headers=as_owner(key), json={"note": "it was slow", "rating": -1})
     listed = c.get("/admin/api/shops", headers=admin).json()
     assert listed[0]["owner_in"] == 1 and listed[0]["feedback"] == 1 and listed[0]["products"] == 0
-    assert [m["body"] for m in c.get(f"/admin/api/shops/{made['shop']['id']}/transcript", headers=admin).json()] == ["hello", "Hello Tolu!"]
+    assert [m["body"] for m in c.get(f"/admin/api/shops/{made['shop']['id']}/transcript", headers=admin).json()] == ["hello, any news?", "Hello Tolu!"]
     assert c.get("/admin/api/feedback", headers=admin).json()[0]["note"] == "it was slow"
     fresh = c.post(f"/admin/api/shops/{made['shop']['id']}/key", headers=admin).json()["join_url"].split("#key=")[1]
     assert c.get("/api/me", headers=as_owner(key)).status_code == 401
@@ -175,7 +175,7 @@ def test_deleting_her_shop_erases_books_and_chats(shops):
     c = client(shops)
     row, key = shops.create("Delete Me")
     use(shops, row["id"], ["hi"])
-    c.post("/api/chat", headers=as_owner(key), json={"text": "hello"})
+    c.post("/api/chat", headers=as_owner(key), json={"text": "hello, any news?"})
     assert c.delete("/api/shop", headers=as_owner(key)).json() == {"ok": True}
     assert c.get("/api/me", headers=as_owner(key)).status_code == 401
     assert shops.transcript(row["id"]) == []
@@ -265,7 +265,7 @@ def test_push_results_and_shared_prices(shops, monkeypatch):
     c.post(f"/c/api/{a['slug']}/message", json={"cid": CID, "name": "Bola", "text": "abeg reduce am"})
     assert sent and sent[0][1] == "Sabi needs you"          # a customer message reached her: phone told
     sent.clear()
-    c.post("/api/chat", headers=as_owner(key), json={"text": "hi"})
+    c.post("/api/chat", headers=as_owner(key), json={"text": "hi, any news?"})
     assert not sent                                         # her own messages don't buzz her phone
 
     # Shared prices: anonymous, opt-in, and only once two other shops share.

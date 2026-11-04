@@ -118,7 +118,7 @@ def test_her_chosen_language_and_the_models_own_reply(store):
     assert not errors and prefs.get(store)["language"] == "Swahili"
     assert prefs.save(store, {"language": "12; drop"})[1]          # not a language name
     llm = Translating(["Nimerekodi."])
-    ctx = Agent(store, llm, OWNER, LIMIT).handle(sender=OWNER, text="habari")
+    ctx = Agent(store, llm, OWNER, LIMIT).handle(sender=OWNER, text="habari ya biashara?")
     assert ctx.outbox[0].body == "Nimerekodi." and llm.translations == []   # the model's reply is already hers
     msg = summary_message(store, "daily", llm=llm)
     assert msg["body"].startswith("FR: Today's books") and "into Swahili" in llm.translations[0]

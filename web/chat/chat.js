@@ -25,8 +25,11 @@ function esc(s) {
 function waFormat(html) {
   const links = [];
   const safe = html.replace(/https?:\/\/[^\s<]+/g, u => `\u0000${links.push(u) - 1}\u0000`);
-  const mark = (ch, tag) => new RegExp(`(^|[\s(•\-–—:])\${ch}(?=\S)([^${ch}\n]*?\S)\${ch}(?=$|[\s).,!?:;])`, "gm");
-  return safe.replace(mark("*", "b"), "$1<b>$2</b>").replace(mark("_", "i"), "$1<i>$2</i>").replace(mark("~", "s"), "$1<s>$2</s>")
+  const mark = ch => {          // ch is *, _ or ~: escaped, so it is matched as itself
+    const c = "\\" + ch, R = String.raw;
+    return new RegExp(R`(^|[\s(•\-–—:])` + c + R`(?=\S)([^` + c + R`\n]*?\S)` + c + R`(?=$|[\s).,!?:;])`, "gm");
+  };
+  return safe.replace(mark("*"), "$1<b>$2</b>").replace(mark("_"), "$1<i>$2</i>").replace(mark("~"), "$1<s>$2</s>")
     .replace(/\u0000(\d+)\u0000/g, (_, i) => links[i]);
 }
 

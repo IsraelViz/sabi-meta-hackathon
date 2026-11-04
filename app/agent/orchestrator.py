@@ -18,7 +18,7 @@ from app import money
 from app.agent import approvals, language, sales
 from app.agent.context import RunContext
 from app.agent.tools import toolset
-from app.agent import voice
+from app.agent import greeting, voice
 from app.promo import share
 from app.ledger.model import Contact
 from app.ledger.store import new_id
@@ -143,7 +143,8 @@ class Agent:
             ctx.contact_id = _customer_contact(self.store, sender, profile_name).id
             self.store.touch_inbound(ctx.contact_id)   # opens WhatsApp's 24-hour free-text window
 
-        raw = text or button_title or ""
+        # Her greeting's buttons say what she wants in full, so Sabi reads it as if she typed it.
+        raw = text or (greeting.SAYS.get(button_id) if button_id else None) or button_title or ""
         ctx.message = normalize(raw) if raw else None
         ctx.evidence_id = self.store.add_evidence(
             channel=channel, sender=sender, media_url=media_url, original_text=raw,
@@ -162,6 +163,11 @@ class Agent:
             if persona == "customer" and sales.with_owner(self.store.get_lead(ctx.contact_id)):
                 sales.relay(ctx, raw or "(sent a photo or voice note)")
                 self._remember(ctx, raw, "(passed to the owner, who is handling this chat)")
+                return ctx
+            if persona == "owner" and text and not image_data_url and greeting.is_greeting(text):
+                body, buttons = greeting.snapshot(self.store)      # a look at her shop, not small talk
+                ctx.say(body, buttons)
+                self._remember(ctx, raw, body)
                 return ctx
             if persona == "owner" and button_id in SUMMARY_BUTTONS:
                 SUMMARY_BUTTONS[button_id](ctx)

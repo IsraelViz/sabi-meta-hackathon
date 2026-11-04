@@ -170,6 +170,10 @@ The intelligence layer over the books. Last 30 days against the 30 before:
 - **Charts:** sales week by week for 8 weeks (a season shows in the shape), and best sellers with their share of sales. One hue, labels on the peak and latest week only, and every bar can be tapped for its value.
 - **Lists:** top profit makers, stock that isn't moving, missed demand, prices to check, and what's coming.
 
+**Intelligence in everything Sabi does:**
+- **A greeting** ("hi", "good morning o", "how far") gets a look at the shop instead of small talk, built in code with no model call. It shows today's sales (or yesterday's), the latest late payer, what is sold out or running low, and anything waiting for her answer. Three buttons follow: Record a sale, How's business?, What to order?
+- **Every recorded entry** comes back with what the books now say (`app/ledger/nudges.py`). After a sale: "That's your 3rd sale today: ₦24,800 so far", what she made and the margin, stock about to run out, and for credit how that customer usually pays. After a purchase: a cost change against last time, or a margin that's become too thin. After a payment: what the customer still owes and the total owed to her. After an expense: the week's total against the week before. Sabi adds the most useful one in a short line.
+
 In chat, "how my business dey?" gets the same intelligence (`business_insights`): the two or three takeaways that matter, then one next step. The model only retells; every number and sentence is computed in code.
 
 ## How Sabi sounds (`app/agent/prompts/`, `STYLE` in `orchestrator.py`)
@@ -279,7 +283,7 @@ python scripts/dev_server.py      # then open http://127.0.0.1:8000/app/
 
 ## Status
 
-Working and tested (410 tests), with the owner app also checked by hand at phone size in light and dark mode: the ledger and its database triggers, the Postgres and memory stores, the validator, posting and reversals, the amount normaliser, the agent with both personas, owner approvals, customer orders and payment claims, sales leads, handoff to the owner and follow-ups, learning the shop from its pages, the business statement and its signed links, the credit guard, restock alerts, setting up from a photo, receipts and notebook pages, the stock-take, the promotion loop, payment reminders, the public two-phone demo, WhatsApp parsing and sending, the daily and weekly summaries at her chosen time, the coach and its follow-ups, the Sabi Score, the payment alert check, the "Why?" trail, savings, shared prices, notifications, the results page, other languages (detection, French-style amounts, translation with the number check), other currencies, shopping by picture, and the bookshop (booklists, classes and editions, covers, the school year).
+Working and tested (415 tests), with the owner app also checked by hand at phone size in light and dark mode: the ledger and its database triggers, the Postgres and memory stores, the validator, posting and reversals, the amount normaliser, the agent with both personas, owner approvals, customer orders and payment claims, sales leads, handoff to the owner and follow-ups, learning the shop from its pages, the business statement and its signed links, the credit guard, restock alerts, setting up from a photo, receipts and notebook pages, the stock-take, the promotion loop, payment reminders, the public two-phone demo, WhatsApp parsing and sending, the daily and weekly summaries at her chosen time, the coach and its follow-ups, the Sabi Score, the payment alert check, the "Why?" trail, savings, shared prices, notifications, the results page, other languages (detection, French-style amounts, translation with the number check), other currencies, shopping by picture, and the bookshop (booklists, classes and editions, covers, the school year).
 
 New features run live on Baseten:
 - **Credit guard:** caught Mama Tunde (₦54,000 owed, 2 days late) before more credit was given.

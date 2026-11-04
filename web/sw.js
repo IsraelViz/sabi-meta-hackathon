@@ -1,6 +1,6 @@
 // Offline support: the app shell is cached; API reads are network-first, and the
 // last good answer is shown (marked with x-sabi-cache) when the phone is offline.
-const SHELL = "sabi-shell-v18";
+const SHELL = "sabi-shell-v19";
 const DATA = "sabi-data-v1";
 const SHELL_FILES = ["./", "index.html", "app.css", "app.js", "manifest.webmanifest", "icons.js", "talk.js", "icon.svg", "icon-192.png", "icon-180.png"];
 
