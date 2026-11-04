@@ -46,13 +46,16 @@ RECORD = _fn(
         "items": _ITEMS,
         "contact_id": {"type": ["string", "null"]},
         "new_contact_name": {"type": ["string", "null"], "description": "Only if find_contact found nobody"},
-        "amount_naira": {"type": ["number", "null"], "description": "payment_in/payment_out/expense/drawing"},
+        "amount_naira": {"type": ["number", "null"], "description": "payment_in/payment_out/expense/drawing/capital"},
         "paid_naira": {"type": ["number", "null"],
                        "description": "sale/purchase: amount paid now. 0 if on credit. null if not said."},
         "payment_account": {"type": ["string", "null"], "enum": ["cash", "bank", None],
                             "description": "bank = transfer/POS"},
         "expense_account": {"type": ["string", "null"], "enum": ["transport", "power", "other_exp", None]},
         "due_date": {"type": ["string", "null"], "description": "YYYY-MM-DD when credit is due, if said"},
+        "entry_date": {"type": ["string", "null"], "description":
+            "YYYY-MM-DD only when she says it happened on an earlier day (\"on 12 August\", \"yesterday\"); "
+            "null for today"},
         "memo": {"type": "string"},
         "unclear_amounts": {"type": "array", "description":
             "Every amount marked [UNCLEAR AMOUNT] in the message. path is the field it belongs to, "
@@ -78,7 +81,7 @@ PROMO_IDEAS = _fn("promo_ideas", "Which products the books say are worth promoti
 MAKE_PROMO = _fn(
     "make_promo",
     "Make a flyer and caption from the owner's shelf photo and send her the preview to approve. "
-    "Omit product_id to let the books pick. Without a photo it asks her for one.",
+    "Omit product_id to let the books pick (it skips products posted this week). Without a photo in her message it uses the picture she saved of the product, or asks her for one.",
     {"product_id": {"type": ["string", "null"]},
      "scene": {"type": "string", "description": "Optional background idea, e.g. 'kitchen', 'market stall'"}})
 SEND_REMINDER = _fn("send_reminder",
@@ -311,6 +314,18 @@ def record_entry(ctx, **a):
     return submit(p, ctx)
 
 
+def _past_date(text):
+    """An earlier day she named, for history she is catching up on. Never the future, at most a year back."""
+    if not text:
+        return None
+    d, today = date.fromisoformat(text), date.today()
+    if d > today:
+        raise ValueError(f"entry_date {d} is in the future")
+    if (today - d).days > 366:
+        raise ValueError(f"entry_date {d} is more than a year ago")
+    return None if d == today else d
+
+
 def _proposal_from_args(ctx, a):
     """Build a Proposal from tool arguments and apply the checks only code may make. Returns (p, errors)."""
     if ctx.document_issues:
@@ -326,6 +341,7 @@ def _proposal_from_args(ctx, a):
             payment_account=a.get("payment_account"),
             expense_account=a.get("expense_account"),
             due_date=date.fromisoformat(a["due_date"]) if a.get("due_date") else None,
+            entry_date=_past_date(a.get("entry_date")),
             memo=a.get("memo", ""),
             evidence_id=ctx.evidence_id,
             unclear_amounts=[{"path": _kobo_path(u["path"]), "text": u["text"],
@@ -397,14 +413,18 @@ def record_batch(ctx, entries, title="From your photo"):
     if errors:
         return {"status": "rejected", "errors": errors}
     if clean:
-        total = sum(p.items_total_kobo or p.amount_kobo or 0 for p in clean)
+        # Money in and money out are told apart: a sale and the purchase behind it don't add up.
+        amount = lambda p: p.items_total_kobo or p.amount_kobo or 0
+        came_in = sum(amount(p) for p in clean if p.kind in ("sale", "payment_in"))
+        went_out = sum(amount(p) for p in clean if p.kind not in ("sale", "payment_in"))
+        total = ", ".join(f"{naira(v)} {word}" for v, word in ((came_in, "in"), (went_out, "out")) if v)
         lines = "\n".join(f"• {describe(p, ctx.store)}" for p in clean)
         # Each line was checked alone; together they can still empty the till.
         lines += "".join(f"\n⚠️ Together these take your {account} to {naira(left)}."
                          for account, left in _left_after(clean, ctx.store))
         a = ctx.store.add_approval("batch", {"proposals": [p.to_json() for p in clean]},
                                    f"{title}: {len(clean)} entr{'y' if len(clean) == 1 else 'ies'}, "
-                                   f"{naira(total)}\n{lines}\nRecord all?", [CONFIRM, CANCEL])
+                                   f"{total}\n{lines}\nRecord all?", [CONFIRM, CANCEL])
         ctx.tell_owner(a["question"], buttons_for(a))
     return {"status": "waiting_for_owner", "batched": len(clean), "asked_separately": len(asked)}
 

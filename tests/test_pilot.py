@@ -294,3 +294,44 @@ def test_push_results_and_shared_prices(shops, monkeypatch):
     c.post(f"/admin/api/feedback/{fid}/public", headers=as_owner("main-key"), json={"public": True})
     assert c.get("/admin/api/results", headers=as_owner("main-key")).json()["quotes"] == [
         {"text": "Sabi saves me time", "who": "Shop"}]
+
+
+def test_whatsapp_number_answers_as_her_shop(shops, monkeypatch):
+    """WA_SHOP: a customer's WhatsApp is answered on WhatsApp, she is pulled in through her app, and her
+    answer goes back to the customer's WhatsApp."""
+    import asyncio
+    import dataclasses
+
+    from app.channels import whatsapp
+    c = client(shops)
+    row, key = _stocked_shop(shops, c)
+    shops.accounts.set_login(row["id"], "2348031112222", "her-pin-4321")
+    monkeypatch.setattr(pilot, "settings", dataclasses.replace(pilot.settings, wa_shop=row["slug"],
+                                                               wa_access_token="test"))
+    sent = []
+
+    async def send(to, body, buttons=None, image_url=None, template=None):
+        sent.append((to, body))
+    monkeypatch.setattr(whatsapp, "send", send)
+    customer = "2347034843606"
+    use(shops, row["id"], [
+        [("hand_to_owner", {"reason": "wants a discount on 3 gowns", "summary": "3 Ankara gowns at 12k each?"})],
+        "I've passed this to the owner, who will reply here soon.",
+    ])
+    asyncio.run(pilot.from_whatsapp(shops, whatsapp.Inbound("m1", customer, "text", text="3 gowns for 12k?",
+                                                            profile_name="Tolu")))
+    assert sent == [(customer, "I've passed this to the owner, who will reply here soon.")]
+    owner = c.get("/api/chat", headers=as_owner(key)).json()["messages"][-1]
+    assert owner["body"].startswith("🙋 Tolu needs you")
+    # She answers from her app: it reaches the customer's WhatsApp.
+    c.post("/api/chat", headers=as_owner(key), json={"button_id": owner["buttons"][0]["id"], "button_title": "Reply"})
+    sent.clear()
+    c.post("/api/chat", headers=as_owner(key), json={"text": "I fit do 13,500 each for 3"})
+    assert (customer, "I fit do 13,500 each for 3") in sent
+    assert shops.messages(row["id"], customer)[-1]["body"] == "I fit do 13,500 each for 3"
+    # Her own number is her: Sabi answers her on WhatsApp and in her Chat tab.
+    use(shops, row["id"], ["Ehen! You never sell anything today."])
+    sent.clear()
+    asyncio.run(pilot.from_whatsapp(shops, whatsapp.Inbound("m2", "2348031112222", "text", text="how far today?")))
+    assert sent == [("2348031112222", "Ehen! You never sell anything today.")]
+    assert c.get("/api/chat", headers=as_owner(key)).json()["messages"][-1]["body"] == "Ehen! You never sell anything today."

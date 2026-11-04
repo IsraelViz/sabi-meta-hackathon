@@ -145,6 +145,13 @@ async def receive(request: Request, background: BackgroundTasks):
 
 
 async def process(msg: whatsapp.Inbound):
+    if shops and settings.wa_shop:     # the WhatsApp number answers as one pilot shop
+        from app import pilot
+        try:
+            await pilot.from_whatsapp(shops, msg)
+        except Exception:
+            log.exception("failed to process message %s", msg.message_id)
+        return
     try:
         kwargs = dict(sender=msg.sender, channel="whatsapp", profile_name=msg.profile_name)
         if msg.kind == "text":

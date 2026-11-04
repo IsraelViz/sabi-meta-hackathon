@@ -207,6 +207,7 @@ def test_change_recaptions_and_skip_posts_nothing(store, services):
         [("make_promo", {"product_id": "p-milk"})],
         "Peak milk tin for ₦700 per tin. WhatsApp us! #Lagos",
         "",
+        '{"caption": "more Pidgin"}',
         "Peak milk don land o! ₦700 per tin. Abeg WhatsApp us. #Lagos #Naija",
     ])
     agent = Agent(store, llm, OWNER, LIMIT, promo=services)
@@ -314,3 +315,47 @@ def test_stop_from_a_customer_takes_them_off_the_offer_list_without_the_model(st
     out = Agent(store, llm, OWNER, LIMIT).handle(sender="2348022222222", text="STOP").outbox
     assert store.get_contact("c-tunde").offers_ok is False and "no more offers" in out[0].body
     assert llm.seen == []
+
+
+def test_generate_post_uses_her_saved_picture_and_does_not_repeat_this_weeks_post(store, services):
+    """One tap: the books pick, her saved picture makes the flyer, and next time it picks something new."""
+    agent = Agent(store, ScriptedLLM(["Fresh stock dey! WhatsApp us. #Lagos", "New one don land! WhatsApp us. #Lagos"]),
+                  OWNER, LIMIT, promo=services)
+    first, second = ranking.rank(store, limit=2)
+    saved = services.media.save(base64.b64decode(shelf_photo().split(",", 1)[1]), "jpg")
+    store.set_product_photo(first.product_id, saved["url"])
+    store.set_product_photo(second.product_id, services.media.save(base64.b64decode(shelf_photo().split(",", 1)[1]), "jpg")["url"])
+    flyer = agent.handle(sender=OWNER, button_id="summary:post", button_title="Make tomorrow's post")
+    assert next(o for o in flyer.outbox if o.buttons).body.startswith(f"Draft post for *{first.name}*")
+    again = agent.handle(sender=OWNER, button_id="summary:post", button_title="Make tomorrow's post")
+    body = next(o for o in again.outbox if o.buttons).body
+    assert body.startswith(f"Draft post for *{second.name}*") and f"{first.name} already had a post this week" in body
+
+
+def test_she_edits_the_picture_or_sends_the_right_one(store, services):
+    """Picture changes redraw the flyer and keep her caption; a photo after Change becomes the flyer's picture."""
+    llm = ScriptedLLM([
+        [("make_promo", {"product_id": "p-milk"})],
+        "Peak milk tin for ₦700 per tin. WhatsApp us! #Lagos",
+        "",
+        '{"background": "plain white", "size": 1.2, "brightness": 1.25, "price": false}',
+    ])
+    agent = Agent(store, llm, OWNER, LIMIT, promo=services)
+    preview = next(o for o in agent.handle(sender=OWNER, text="post peak milk", image_data_url=shelf_photo()).outbox
+                   if o.buttons)
+    agent.handle(sender=OWNER, button_id=preview.buttons[1]["id"])          # Change
+    edited = next(o for o in agent.handle(sender=OWNER, text="white background, bigger, brighter, no price").outbox
+                  if o.buttons)
+    post = store.list_posts()[0]
+    assert post["caption"] == "Peak milk tin for ₦700 per tin. WhatsApp us! #Lagos" and post["caption_source"] == "kept"
+    assert post["tools"]["style"] == {"size": 1.2, "brightness": 1.25, "price": False}
+    assert post["tools"]["background"] == "plain white"
+    assert Image.open(post["background_path"]).getpixel((5, 5)) == (255, 255, 255)
+
+    agent.handle(sender=OWNER, button_id=edited.buttons[1]["id"])           # Change again, then her own photo
+    cuts = len(services.cutter.prompts)
+    redone = agent.handle(sender=OWNER, text="(photo, no caption)", image_data_url=shelf_photo())
+    assert next(o for o in redone.outbox if o.buttons).body.startswith("Draft post for *Peak milk tin*")
+    assert len(services.cutter.prompts) == cuts + 1
+    newest = store.list_posts()[0]
+    assert newest["cutout_path"] != post["cutout_path"] and newest["tools"]["style"]["price"] is False

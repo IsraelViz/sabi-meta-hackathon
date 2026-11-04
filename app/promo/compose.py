@@ -81,7 +81,7 @@ def _cover(bg, size):
 
 def _pill(draw, xy, text, font, fill, ink):
     x, y = xy
-    pad_x, pad_y = 36, 18
+    pad_x, pad_y = 26, 12
     tw = draw.textlength(text, font=font)
     box = (x, y, x + tw + 2 * pad_x, y + font.size + 2 * pad_y)
     draw.rounded_rectangle(box, radius=(box[3] - box[1]) // 2, fill=fill)
@@ -89,39 +89,43 @@ def _pill(draw, xy, text, font, fill, ink):
     return box
 
 
-def compose(background, cutout, *, shop_name, product_name, price_kobo, unit, whatsapp=None):
+def compose(background, cutout, *, shop_name, product_name, price_kobo, unit, whatsapp=None, scale=1.0,
+            show_price=True):
+    """`scale` makes the product bigger or smaller than usual (0.5 to 1.3); `show_price` False leaves the price off."""
     canvas = _cover(background.convert("RGB"), SIZE).convert("RGBA")
     w, h = SIZE
+    band, card_top, margin = 96, h - (290 if show_price else 210), 56
 
-    # Product: fit inside the middle area, keep its proportions, add a soft shadow.
-    area_w, area_h = int(w * 0.72), int(h * 0.50)
-    scale = min(area_w / cutout.width, area_h / cutout.height)
-    product = cutout.convert("RGBA").resize((max(1, round(cutout.width * scale)), max(1, round(cutout.height * scale))))
-    px, py = (w - product.width) // 2, int(h * 0.20) + (area_h - product.height) // 2
+    # Product: centred in the space between the name band and the card, with room around it.
+    scale = max(0.5, min(1.3, scale or 1))
+    space_top, space_h = band + 40, card_top - band - 80
+    area_w, area_h = int(w * 0.50 * scale), int(space_h * 0.68 * scale)
+    fit = min(area_w / cutout.width, area_h / cutout.height)
+    product = cutout.convert("RGBA").resize((max(1, round(cutout.width * fit)), max(1, round(cutout.height * fit))))
+    px, py = (w - product.width) // 2, space_top + (space_h - product.height) // 2
     # Blur on a padded canvas so the shadow fades out instead of stopping at a hard edge.
-    pad = 60
+    pad = 50
     alpha = Image.new("L", (product.width + 2 * pad, product.height + 2 * pad), 0)
-    alpha.paste(product.getchannel("A").point(lambda a: a * 0.45), (pad, pad))
+    alpha.paste(product.getchannel("A").point(lambda a: a * 0.4), (pad, pad))
     shadow = Image.new("RGBA", alpha.size, (0, 0, 0, 0))
-    shadow.putalpha(alpha.filter(ImageFilter.GaussianBlur(18)))
-    canvas.alpha_composite(shadow, (px + 14 - pad, py + 22 - pad))
+    shadow.putalpha(alpha.filter(ImageFilter.GaussianBlur(16)))
+    canvas.alpha_composite(shadow, (px + 10 - pad, py + 16 - pad))
     canvas.alpha_composite(product, (px, py))
 
     draw = ImageDraw.Draw(canvas)
     # Top band: shop name
-    draw.rectangle((0, 0, w, 130), fill=(*CREAM, 235))
-    name_font = _fit_text(draw, shop_name, w - 120, 64)
-    draw.text((w // 2, 65), shop_name, font=name_font, fill=INK, anchor="mm")
+    draw.rectangle((0, 0, w, band), fill=(*CREAM, 235))
+    draw.text((w // 2, band // 2), shop_name, font=_fit_text(draw, shop_name, w - 2 * margin, 44, 24), fill=INK,
+              anchor="mm")
 
     # Bottom card: product, price, how to order
-    card_top = int(h * 0.74)
-    draw.rounded_rectangle((40, card_top, w - 40, h - 40), radius=36, fill=(*CREAM, 245))
-    title_font = _fit_text(draw, product_name, w - 160, 60)
-    draw.text((80, card_top + 36), product_name, font=title_font, fill=INK)
-    price_text = f"{price_label(price_kobo)} / {unit}"
-    _pill(draw, (80, card_top + 120), price_text, _font(64), ACCENT, (255, 255, 255))
+    draw.rounded_rectangle((margin, card_top, w - margin, h - margin), radius=28, fill=(*CREAM, 245))
+    x = margin + 36
+    draw.text((x, card_top + 30), product_name, font=_fit_text(draw, product_name, w - 2 * x, 44, 24), fill=INK)
+    if show_price:
+        _pill(draw, (x, card_top + 96), f"{price_label(price_kobo)} / {unit}", _font(44), ACCENT, (255, 255, 255))
     cta = f"Order on WhatsApp: {whatsapp}" if whatsapp else "Order on WhatsApp"
-    draw.text((80, h - 100), cta, font=_fit_text(draw, cta, w - 160, 40), fill=INK)
+    draw.text((x, h - margin - 58), cta, font=_fit_text(draw, cta, w - 2 * x, 30, 20), fill=INK)
     return canvas.convert("RGB")
 
 

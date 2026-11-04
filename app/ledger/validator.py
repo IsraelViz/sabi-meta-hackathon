@@ -67,7 +67,8 @@ def validate(p: Proposal, store, auto_post_limit_kobo) -> Verdict:
     _check_contact(p, store, v)
     {
         "sale": _check_sale, "purchase": _check_purchase, "payment_in": _check_payment,
-        "payment_out": _check_payment, "expense": _check_expense, "drawing": _check_drawing, "saving": _check_saving,
+        "payment_out": _check_payment, "expense": _check_expense, "drawing": _check_drawing, "capital": _check_capital,
+        "saving": _check_saving,
         "stock_loss": _check_stock_loss,
     }[p.kind](p, store, v)
     _check_funds(p, store, v)
@@ -314,6 +315,11 @@ def _check_expense(p, store, v):
 def _check_drawing(p, store, v):
     if _check_amount(p, v, "money you took"):
         _check_account(p, v, "money you took")
+
+
+def _check_capital(p, store, v):
+    if _check_amount(p, v, "money you put in"):
+        _check_account(p, v, "money you put in")
 
 
 def _check_saving(p, store, v):

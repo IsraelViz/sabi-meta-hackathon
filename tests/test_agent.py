@@ -281,3 +281,37 @@ def test_correction_reverses_after_confirm(store):
     agent.handle(sender=OWNER, button_id=confirm.buttons[0]["id"])
     assert store.get_entry(sale.id).status == "reversed"
     assert store.account_balance("ar", "c-ade") == 0 and store.stock_on_hand("p-sugar") == 5
+
+
+def test_history_she_is_catching_up_on_keeps_its_own_date(store):
+    from datetime import date, timedelta
+    day = date.today() - timedelta(days=20)
+    later = (date.today() + timedelta(days=1)).isoformat()
+    llm = ScriptedLLM([
+        [("find_product", {"query": "indomie"})],
+        [("record_entry", {"kind": "sale", "items": [{"product_id": "p-indomie", "qty": 1, "unit_price_naira": None}],
+                           "paid_naira": None, "payment_account": "cash", "entry_date": later, "memo": "1 ctn Indomie"})],
+        [("record_entry", {"kind": "sale", "items": [{"product_id": "p-indomie", "qty": 1, "unit_price_naira": None}],
+                           "paid_naira": None, "payment_account": "cash", "entry_date": day.isoformat(),
+                           "memo": "1 ctn Indomie"})],
+        "Recorded.",
+    ])
+    ctx = Agent(store, llm, OWNER, LIMIT).handle(sender=OWNER, text=f"On {day:%d %B} I sold 1 carton Indomie, cash")
+    assert "future" in json.dumps(tool_results(llm)[1])          # never a day that hasn't come
+    assert [e.entry_date for e in ctx.committed] == [day]
+    assert "sale today" not in json.dumps(tool_results(llm)[2])   # not counted as today's sales
+
+
+def test_money_she_puts_in_is_cash_not_profit(store):
+    from app.ledger.reports import profit_and_loss
+    from datetime import date
+    before = store.account_balance("bank")
+    llm = ScriptedLLM([
+        [("record_entry", {"kind": "capital", "amount_naira": 150000, "payment_account": "bank",
+                           "memo": "Put in from my savings"})],
+        "Recorded.",
+    ])
+    ctx = Agent(store, llm, OWNER, 1_000_000_00).handle(sender=OWNER, text="I put ₦150k of my savings into the shop")
+    assert [e.kind for e in ctx.committed] == ["capital"]
+    assert store.account_balance("bank") - before == 150_000_00
+    assert profit_and_loss(store, "today", date.today())["sales_kobo"] == 0

@@ -94,6 +94,9 @@ main { max-width: 640px; margin: 0 auto; padding: var(--gutter); }
 .tabs a.on { color: var(--accent); font-weight: 600; }
 
 h1 { font-size: 22px; margin: 4px 0 12px; }
+.page-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.page-head h1 { margin: 4px 0; }
+.btn.small { width: auto; padding: 7px 14px; font-size: 13px; border-radius: 999px; white-space: nowrap; }
 h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 20px 0 8px; }
 
 .card {

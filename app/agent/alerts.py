@@ -14,7 +14,9 @@ QUIET_FOR = timedelta(hours=24)
 
 
 def after_sale(ctx, entry):
-    recent = {a["payload"].get("product_id") for a in ctx.store.recent_approvals("restock", now() - QUIET_FOR)}
+    if entry.entry_date and entry.entry_date < now().date():
+        return      # history she is catching up on: the book left long ago, nothing to order today
+    recent ={a["payload"].get("product_id") for a in ctx.store.recent_approvals("restock", now() - QUIET_FOR)}
     for pid in {l.product_id for l in entry.lines if l.account == "sales" and l.product_id}:
         if pid in recent:
             continue

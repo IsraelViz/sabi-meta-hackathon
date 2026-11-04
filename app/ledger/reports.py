@@ -19,7 +19,7 @@ def whole_naira(kobo):
 HEADLINE_ACCOUNTS = {          # the one number a trader cares about, per kind of entry
     "sale": ("sales", "credit"), "purchase": ("inventory", "debit"), "payment_in": ("ar", "credit"),
     "payment_out": ("ap", "debit"), "drawing": ("drawings", "debit"), "stock_loss": ("stock_loss", "debit"),
-    "saving": ("savings", "debit"),
+    "saving": ("savings", "debit"), "capital": ("equity", "credit"),
     "opening": ("inventory", "debit"),
 }
 

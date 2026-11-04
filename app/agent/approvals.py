@@ -25,6 +25,9 @@ def buttons_for(approval):
             for i, o in enumerate(approval["options"][:3])]
 
 
+EXPENSE_NAMES = {"transport": "transport", "power": "power", "other_exp": "other"}
+
+
 def describe(p: Proposal, store):
     """One line a trader can check at a glance."""
     who = store.get_contact(p.contact_id).name if p.contact_id else p.new_contact_name
@@ -42,7 +45,8 @@ def describe(p: Proposal, store):
         text = naira(p.amount_kobo) if p.amount_kobo is not None else "amount not set"
         total = ""
     label = {"sale": "Sale", "purchase": "Purchase", "payment_in": "Payment from", "payment_out": "Payment to",
-             "expense": f"Expense ({p.expense_account})", "drawing": "You took", "stock_loss": "Stock loss",
+             "expense": f"Expense ({p.memo.strip() or EXPENSE_NAMES.get(p.expense_account, p.expense_account)})", "drawing": "You took", "capital": "You put in",
+             "stock_loss": "Stock loss",
              "saving": "Put aside for savings"}[p.kind]
     if p.kind in ("payment_in", "payment_out"):
         return f"{label} {who}: {text}"
@@ -55,6 +59,8 @@ def describe(p: Proposal, store):
             s += " by transfer" if p.payment_account == "bank" else " in cash"
         if p.due_date and p.paid_kobo < p.items_total_kobo:
             s += f", due {p.due_date:%a %d %b}"
+    if p.entry_date:
+        s += f", on {p.entry_date:%a %d %b}"
     return s
 
 
@@ -269,6 +275,26 @@ def handle_button(button_id, ctx):
         return True
 
     return False
+
+
+POST_PHOTO_WORDS = ("post", "flyer", "picture", "photo", "pic", "image", "use this", "instead")
+NO_CAPTION = "(photo, no caption)"
+
+
+def handle_post_photo(text, image_data_url, ctx):
+    """A photo while a draft post waits: after she tapped Change, or with words like "use this picture", it is the
+    right picture for the post. Returns True if handled."""
+    words = "" if (text or "").strip() == NO_CAPTION else (text or "").strip()
+    fresh = [a for a in ctx.store.pending_approvals() if a["kind"] == "post" and now() - a["created_at"] < ANSWER_WINDOW]
+    if not fresh:
+        return False
+    a = max(fresh, key=lambda x: x["created_at"])
+    if not (a["payload"].get("awaiting_text") or any(w in words.lower() for w in POST_PHOTO_WORDS)):
+        return False
+    ctx.store.answer_approval(a["id"], "rejected", "new picture")
+    from app.promo.flow import revise_post
+    revise_post(a, words, ctx, ctx.promo, photo=image_data_url)
+    return True
 
 
 def handle_typed_answer(text, ctx):

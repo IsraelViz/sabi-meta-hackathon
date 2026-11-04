@@ -74,6 +74,10 @@ def build_entry(p: Proposal, store, created_by) -> Entry:
         lines += [Line("drawings", debit_kobo=p.amount_kobo),
                   Line(p.payment_account, credit_kobo=p.amount_kobo)]
 
+    elif kind == "capital":    # her own money put into the shop: not a sale, so not profit
+        lines += [Line(p.payment_account, debit_kobo=p.amount_kobo),
+                  Line("equity", credit_kobo=p.amount_kobo)]
+
     elif kind == "saving":     # money put aside (ajo, esusu, savings box): still hers, so an asset
         lines += [Line("savings", debit_kobo=p.amount_kobo),
                   Line(p.payment_account, credit_kobo=p.amount_kobo)]

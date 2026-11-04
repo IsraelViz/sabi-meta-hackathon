@@ -40,10 +40,10 @@ function time(iso) {
 
 const KIND = {
   sale: ["Sale", "S"], purchase: ["Purchase", "P"], payment_in: ["Payment in", "₦"], payment_out: ["Paid supplier", "₦"],
-  expense: ["Expense", "E"], drawing: ["You took", "D"], stock_loss: ["Stock loss", "L"], saving: ["Saved", "₦"], reversal: ["Cancelled", "×"],
+  expense: ["Expense", "E"], drawing: ["You took", "D"], capital: ["You put in", "+"], stock_loss: ["Stock loss", "L"], saving: ["Saved", "₦"], reversal: ["Cancelled", "×"],
   opening: ["Opening stock", "O"],
 };
-const MONEY_IN = new Set(["sale", "payment_in"]);
+const MONEY_IN = new Set(["sale", "payment_in", "capital"]);
 let ME = null;   // /api/me: which shop, and whether she talks to Sabi in the Chat tab (pilot) or on WhatsApp
 const where = () => (ME?.chat ? "in Chat" : "on WhatsApp");
 const BY = { "agent:auto": "Recorded automatically", "agent:approved": "You confirmed it", app: "Entered in the app", seed: "Demo data" };
@@ -611,7 +611,7 @@ const POST_STATUS = { draft: ["Waiting for you", "warn"], published: ["Posted", 
 
 async function posts() {
   const rows = await api("/api/posts");
-  view.innerHTML = `<h1>Posts</h1>${rows.length ? rows.map(p => {
+  view.innerHTML = `<div class="page-head"><h1>Posts</h1>${ME?.chat ? `<button class="btn small" id="gen-post">+ Generate post</button>` : ""}</div>${rows.length ? rows.map(p => {
     const [label, cls] = POST_STATUS[p.status] || [p.status, ""];
     const ids = p.platform_ids ? Object.entries(p.platform_ids).map(([k, v]) => `${esc(k)}: ${esc(v)}`).join(" · ") : "";
     return `<article class="card post">
@@ -630,6 +630,8 @@ async function posts() {
     mediaUrl(img.dataset.src).then(u => img.src = u).catch(() => img.remove());
   }
   view.querySelectorAll(".share-post").forEach(btn => btn.onclick = () => sharePicture(btn.dataset.img, btn.dataset.caption, btn));
+  const gen = $("#gen-post");
+  if (gen) gen.onclick = () => { chatAsk = "Make a post"; location.hash = "#/chat"; };   // Sabi picks the product and makes the flyer
 }
 
 // The flyer and its caption to Instagram, WhatsApp Status or Facebook in one tap: the phone's share sheet
@@ -726,6 +728,7 @@ async function showDebtor(id) {
 // ---- chat with Sabi (pilot shops) -------------------------------------------------
 
 let chatLast = 0, chatTimer = null, chatBusy = false;
+let chatAsk = null;   // a request another page hands to Chat, sent once Chat opens
 const ANSWERED = "sabi.answered";
 
 function copy(text, btn) {
@@ -932,6 +935,7 @@ To start, send a photo 📷 of your price list, or type your products and prices
   }
   showMessages(messages);
   window.scrollTo(0, document.body.scrollHeight);
+  if (chatAsk) { const text = chatAsk; chatAsk = null; chatSend({ text }, text); }
   $("#composer").onsubmit = e => {
     e.preventDefault();
     const text = $("#chat-text").value.trim();

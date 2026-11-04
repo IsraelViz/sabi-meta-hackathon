@@ -98,20 +98,95 @@ async def _inbound(shops, shop, m: ChatIn, sender):
     return kwargs, shown, image
 
 
-async def _run(shops, shop, chat, kwargs, shown, image, sender_name=None):
+async def _run(shops, shop, chat, kwargs, shown, image, sender_name=None, channel=None):
     if shops.used_today(shop.id) >= shops.daily_messages:
         raise HTTPException(429, "Sabi has reached today's message limit for this shop. It resets in 24 hours.")
     first = shops.log(shop.id, chat, "in", shown, image=image, sender_name=sender_name)
     started = time.monotonic()
+    channel = channel or ("app" if chat == OWNER else "web")
 
     def handle():
         with shop.lock:   # one message at a time per shop: the books and approvals stay in order
-            return shop.agent.handle(sender=chat, channel="app" if chat == OWNER else "web", **kwargs)
+            return shop.agent.handle(sender=chat, channel=channel, **kwargs)
 
     ctx = await asyncio.to_thread(handle)
     latency = int((time.monotonic() - started) * 1000)
-    shops.deliver(shop, ctx.outbox, tools=[c["tool"] for c in ctx.tool_log], latency_ms=latency, notify=chat != OWNER)
+    # Her replies reach her WhatsApp too when she is writing from it, or wrote from it in the last day.
+    owner_wa = (channel == "whatsapp") if chat == OWNER else time.time() - _owner_wrote.get(shop.id, 0) < 86400
+    await _deliver(shops, shop, ctx.outbox, owner_wa, tools=[c["tool"] for c in ctx.tool_log], latency_ms=latency,
+                   notify=chat != OWNER)
     return first
+
+
+# --- one shop answers the WhatsApp number (WA_SHOP) -----------------------------------------
+
+_owner_wrote: dict[str, float] = {}     # shop id -> when she last wrote from her own WhatsApp
+
+
+def answers_whatsapp(shop):
+    return bool(settings.wa_shop and settings.wa_access_token and shop.slug == settings.wa_shop)
+
+
+async def _whatsapp(o, to):
+    """Send one reply on WhatsApp. False if it didn't go (outside WhatsApp's 24 hours, a number the test
+    app may not message), so it can go in her chat instead."""
+    from app.channels import whatsapp
+    image = o.image_url
+    if image and image.startswith("/"):
+        image = f"{settings.public_base_url}{image}" if settings.public_base_url else None
+    try:
+        await whatsapp.send(to, o.body, o.buttons, image, o.template)
+        return True
+    except Exception:
+        log.exception("WhatsApp to %s failed", to)
+        return False
+
+
+async def _deliver(shops, shop, outbox, owner_wa, **kw):
+    """Replies to a phone number go out on WhatsApp when this shop answers the WhatsApp number; the rest,
+    and any that WhatsApp refused, go in the app's chats."""
+    rest = []
+    for o in outbox:
+        if answers_whatsapp(shop) and o.to.isdigit() and await _whatsapp(o, o.to):
+            shops.log(shop.id, o.to, "out", o.body, buttons=o.buttons, image=o.image_url)
+            if o.reminder_id:
+                shop.store.update_reminder(o.reminder_id, status="sent")
+            continue
+        if o.to == OWNER and owner_wa and answers_whatsapp(shop):
+            await _whatsapp(o, shops.row(shop.id)["owner_phone"])
+        rest.append(o)
+    shops.deliver(shop, rest, **kw)
+
+
+async def from_whatsapp(shops, msg):
+    """A message to the WhatsApp number, for the WA_SHOP shop. Her own number is her, as in the Chat tab;
+    anyone else is her customer, answered on WhatsApp, and the chat is kept like a chat-link customer's."""
+    from app.channels import whatsapp
+    shop = shops.by_slug(settings.wa_shop)
+    if shop is None:
+        log.error("WA_SHOP %r is not a shop's link name", settings.wa_shop)
+        return
+    chat = OWNER if msg.sender == shops.row(shop.id)["owner_phone"] else msg.sender
+    if chat == OWNER:
+        _owner_wrote[shop.id] = time.time()
+    try:
+        if msg.kind == "text":
+            m = ChatIn.model_construct(text=msg.text)
+        elif msg.kind == "button":
+            m = ChatIn.model_construct(button_id=msg.button_id, button_title=msg.button_title)
+        elif msg.kind in ("audio", "image"):
+            data, mime = await whatsapp.download_media(msg.media_id)
+            url = f"data:{mime};base64,{base64.b64encode(data).decode()}"
+            m = ChatIn.model_construct(**({"audio": url} if msg.kind == "audio" else {"image": url, "text": msg.text}))
+        else:
+            raise HTTPException(422, "I can read text, voice notes and photos for now.")
+        name = None if chat == OWNER else msg.profile_name
+        kwargs, shown, image = await _inbound(shops, shop, m, chat)
+        if name:
+            kwargs["profile_name"] = name
+        await _run(shops, shop, chat, kwargs, shown, image, sender_name=name, channel="whatsapp")
+    except HTTPException as e:
+        await whatsapp.send(msg.sender, e.detail)
 
 
 # --- the owner's chat ----------------------------------------------------------------

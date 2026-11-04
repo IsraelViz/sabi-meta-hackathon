@@ -16,6 +16,8 @@ services:
         sync: false
       - key: SHOPS_DB          # pilot shops; the same database is fine
         sync: false
+      - key: WA_SHOP           # a pilot shop's link name: the WhatsApp number answers as that shop
+        sync: false
       - key: DEMO_HISTORY      # first run only: a week of trading in the demo shop
         value: "1"
       # This service's own address, e.g. https://sabi.onrender.com

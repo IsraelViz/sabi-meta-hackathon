@@ -98,6 +98,9 @@ class Settings:
     # Pilot shops: real testers, each with her own books, chat in the app and a customer chat link.
     # A Postgres URL, or "pgserver:<folder>" for an embedded Postgres kept in that folder. Empty = off.
     shops_db: str = _env("SHOPS_DB")
+    # A pilot shop's link name (the end of her /c/ link, e.g. broadway-books): the WhatsApp number answers
+    # as that shop. Her own number is her, like the Chat tab; anyone else is her customer. Empty = the main shop.
+    wa_shop: str = _env("WA_SHOP")
     # Judges' demo account: the demo bookshop as an app shop, signed into with this phone and PIN.
     # The phone is shown masked on the sign-in pages; a button signs judges in. Empty PIN = no demo account.
     demo_login_phone: str = _env("DEMO_LOGIN_PHONE")          # default: OWNER_PHONE

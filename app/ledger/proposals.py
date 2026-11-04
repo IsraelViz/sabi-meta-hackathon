@@ -6,7 +6,7 @@ shapes; validator.py checks it and posting.py turns it into balanced lines.
 from dataclasses import asdict, dataclass, field
 from datetime import date
 
-KINDS = ("sale", "purchase", "payment_in", "payment_out", "expense", "drawing", "stock_loss", "saving")
+KINDS = ("sale", "purchase", "payment_in", "payment_out", "expense", "drawing", "capital", "stock_loss", "saving")
 
 
 @dataclass

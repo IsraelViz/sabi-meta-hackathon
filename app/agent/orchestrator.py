@@ -176,6 +176,9 @@ class Agent:
             if persona == "owner" and button_id and approvals.handle_button(button_id, ctx):
                 self._remember(ctx, f"(tapped: {button_title or 'a button'})")
                 return ctx
+            if persona == "owner" and image_data_url and approvals.handle_post_photo(text, image_data_url, ctx):
+                self._remember(ctx, "(sent the picture for the post)")
+                return ctx
             if persona == "owner" and text and not image_data_url and approvals.handle_typed_answer(text, ctx):
                 self._remember(ctx, text)
                 return ctx

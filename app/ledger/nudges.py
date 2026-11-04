@@ -2,7 +2,7 @@
 the one or two things her books now say that she would want to know. All computed here; the model
 picks the most useful one and says it in a short line after the confirmation.
 """
-from datetime import timedelta
+from datetime import date, timedelta
 
 from app.ledger.reports import credit_profile, debtors, last_purchase, restock_advice, whole_naira as naira
 
@@ -29,7 +29,7 @@ def after(entry, store):
     out = []
     if entry.kind == "sale":
         count, total = _sales_on(store, day)
-        if count >= 2:
+        if count >= 2 and day == date.today():      # history she is catching up on isn't "today"
             out.append(f"That's your {_nth(count)} sale today: {naira(total)} so far.")
         cogs = sum(l.debit_kobo for l in entry.lines if l.account == "cogs")
         sales = sum(l.credit_kobo for l in entry.lines if l.account == "sales")

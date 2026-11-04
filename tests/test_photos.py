@@ -59,7 +59,7 @@ def test_supplier_receipt_becomes_one_purchase_after_one_tap(store):
     agent = Agent(store, llm, OWNER, LIMIT)
     ctx = agent.handle(sender=OWNER, text="(photo, no caption)", image_data_url=PHOTO)
     ask = ctx.outbox[0]
-    assert ask.body.startswith("Alaba Depot receipt: 1 entry, ₦115,000")
+    assert ask.body.startswith("Alaba Depot receipt: 1 entry, ₦115,000 out")
     assert ctx.committed == []
     agent.handle(sender=OWNER, button_id=ask.buttons[0]["id"])
     assert store.stock_on_hand("p-indomie") == 22
@@ -113,7 +113,7 @@ def test_notebook_page_batches_clean_lines_and_asks_about_the_odd_one(store):
     # ₦450 for a ₦4,500 crate of eggs is asked on its own...
     assert any("usual price is ₦4,500" in b for b in bodies)
     # ...the two clean lines go together for one Confirm
-    batch = next(o for o in ctx.outbox if o.body.startswith("Notebook page: 2 entries, ₦15,200"))
+    batch = next(o for o in ctx.outbox if o.body.startswith("Notebook page: 2 entries, ₦15,200 in"))
     agent.handle(sender=OWNER, button_id=batch.buttons[0]["id"])
     assert store.account_balance("cash") == 1_520_000
     assert store.stock_on_hand("p-milk") == 42 and store.stock_on_hand("p-spag") == 50
