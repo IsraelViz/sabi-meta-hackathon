@@ -12,6 +12,7 @@ from app.ledger.pg_store import PostgresStore
 from app.ledger.seed import DEMO_SHOPS, add_demo_history, demo_store
 
 log = logging.getLogger("sabi.judge")
+NAME = "Nkechi Books & Stationery"
 
 
 def masked(phone):
@@ -25,12 +26,18 @@ def find(shops, phone):
     return r["id"] if r else None
 
 
-def ensure(shops, phone, pin):
+def ensure(shops, phone, pin, old_phone=None):
     """On start-up: make the demo shop if it isn't there yet (in the background: it takes minutes on a
-    far-away database), and keep its PIN the configured one."""
+    far-away database), and keep its PIN the configured one. Given a new DEMO_LOGIN_PHONE, the demo shop moves
+    to it from `old_phone` (OWNER_PHONE), so the owner's own number is free for a shop of her own."""
     if not (shops and phone and pin):
         return
     sid = find(shops, phone)
+    if sid is None and old_phone and old_phone != phone:
+        held = find(shops, old_phone)
+        if held and shops.row(held)["name"] == NAME:
+            sid = held
+            log.info("judges' demo shop moved to DEMO_LOGIN_PHONE; %s is free", masked(old_phone))
     if sid:
         shops.accounts.set_login(sid, phone, pin)
         return
@@ -41,7 +48,7 @@ def _create(shops, phone, pin):
     from app.promo.publish import LocalMedia
 
     path = DEMO_SHOPS["bookshop"]
-    row, _ = shops.create("Nkechi Books & Stationery", "books", "Nkechi")
+    row, _ = shops.create(NAME, "books", "Nkechi")
     sid = row["id"]
     seed = PostgresStore(shops.dsn, schema=f"shop_{sid}")
     try:

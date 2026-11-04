@@ -94,7 +94,8 @@ if settings.shops_db:   # pilot: real testers, each with her own books, chatting
     shops = Shops(connect_url(settings.shops_db), agent.llm, media_root=Path(settings.media_dir) / "shops",
                   daily_messages=settings.shop_daily_messages)
     from app import judge
-    judge.ensure(shops, settings.demo_login_phone or settings.owner_phone, settings.demo_login_pin)
+    judge.ensure(shops, settings.demo_login_phone or settings.owner_phone, settings.demo_login_pin,
+                 old_phone=settings.owner_phone)
 _seen_ids: deque = deque(maxlen=2000)   # Meta retries webhooks; process each message once
 
 

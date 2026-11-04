@@ -122,6 +122,11 @@ def test_judges_open_the_demo_shop_in_one_tap_and_never_see_the_full_number(shop
     # Start-up again: no second shop, PIN kept to the setting
     judge.ensure(shops, "2347015065065", "2026")
     assert shops.db.execute("select count(*) as n from pilot.shops where owner_phone = '2347015065065'").fetchone()["n"] == 1
+    # DEMO_LOGIN_PHONE set to another number: the demo shop moves there, and the owner's number is free to join
+    judge.ensure(shops, "2348000000001", "2026", old_phone="2347015065065")
+    assert shops.row(judge.find(shops, "2348000000001"))["name"] == "Nkechi Books & Stationery"
+    assert judge.find(shops, "2347015065065") is None
+    assert c.post("/join/api/register", json={**IFE, "shop_name": "Broadway Books", "phone": "07015065065"}).status_code == 200
 
 
 def test_masked_numbers():
