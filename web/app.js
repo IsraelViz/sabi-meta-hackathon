@@ -504,6 +504,77 @@ async function statement() {
 const PERIODS = [["today", "Today"], ["week", "This week"], ["month", "This month"], ["all", "All time"]];
 let period = "week";
 
+// ---- insights: business intelligence from her own books ----------------------------
+
+async function insights() {
+  const d = await api("/api/insights");
+  const k = d.kpis;
+  const change = k.sales_change_pct;
+  const trend = change == null ? `<div class="hint">No sales in the 30 days before</div>`
+    : `<div class="trend ${change >= 0 ? "up" : "down"}">${change >= 0 ? "▲" : "▼"} ${Math.abs(change)}% on the 30 days before</div>`;
+  const maxBest = Math.max(1, ...d.best_sellers.map(r => r.sales_kobo));
+  const list = (rows, render, empty) => rows.length ? `<div class="card">${rows.map(render).join("")}</div>` : `<div class="empty small">${empty}</div>`;
+  const f = d.forecast || {};
+  view.innerHTML = `<h1>Insights</h1>
+    <p class="lead">Last 30 days, from the books Sabi keeps.</p>
+    ${d.takeaways.length ? `<h3>What your books say</h3><ol class="card takeaways">${d.takeaways.map(t => `<li>${esc(t)}</li>`).join("")}</ol>` : ""}
+    <div class="grid">
+      <div class="card kpi wide"><div class="label">Sales, last 30 days</div><div class="value">${naira(k.sales_kobo)}</div>${trend}</div>
+      <div class="card kpi"><div class="label">Gross profit</div><div class="value">${naira(k.gross_profit_kobo)}</div>
+        <div class="hint">${k.margin_pct == null ? "costs not known yet" : `${k.margin_pct}% of sales`}</div></div>
+      <div class="card kpi"><div class="label">Owed to you</div><div class="value">${naira(k.owed_to_you_kobo)}</div></div>
+      <div class="card kpi"><div class="label">Stock value</div><div class="value">${naira(k.stock_value_kobo)}</div><div class="hint">at what you paid</div></div>
+      <div class="card kpi"><div class="label">Cash and bank</div><div class="value">${naira(k.cash_kobo)}</div></div>
+    </div>
+    <h3>Sales, week by week</h3>
+    <div class="card chart">${weekChart(d.weekly_sales)}<div class="chart-note" id="week-note">Tap a week to see its sales.</div></div>
+    <h3>Best sellers</h3>
+    ${list(d.best_sellers, r => `<div class="hbar" title="${esc(r.name)}: ${naira(r.sales_kobo)}, ${r.qty} sold">
+        <div class="hbar-top"><span>${esc(r.name)}</span><b>${naira(r.sales_kobo)}</b></div>
+        <div class="hbar-track"><i style="width:${Math.max(2, (r.sales_kobo / maxBest) * 100).toFixed(1)}%"></i></div>
+        <div class="hint">${r.qty} sold · ${r.share_pct ?? 0}% of sales</div></div>`, "No sales in the last 30 days.")}
+    <h3>What makes you the most profit</h3>
+    ${list(d.top_earners, r => `<div class="line"><span>${esc(r.name)}</span><span>${naira(r.profit_kobo)} <small class="hint">${r.margin_pct}%</small></span></div>`,
+      "Tell Sabi what you paid for your stock to see profit by product.")}
+    ${f.items?.length ? `<h3>Coming up</h3><div class="card"><b>${esc(f.headline)}</b>${f.order_by ? `<div class="hint">Order by ${esc(f.order_by)}</div>` : ""}
+      ${f.items.map(i => `<div class="line"><span>${esc(i.name)}</span><span>order ${i.order_qty}</span></div>`).join("")}
+      ${f.clear?.length ? `<div class="hint" style="margin-top:6px">Sell first, don't reorder: ${f.clear.map(esc).join(", ")}</div>` : ""}</div>` : ""}
+    <h3>Stock that isn't moving</h3>
+    ${list(d.slow_stock, r => `<div class="line"><span>${esc(r.name)} <small class="hint">${r.stock} left</small></span><span>${naira(r.tied_up_kobo)}</span></div>`,
+      "Everything in stock sold at least once in 30 days.")}
+    <h3>Customers asked for, you didn't have</h3>
+    ${list(d.customer_demand, r => `<div class="line"><span>${esc(r.item)}</span><span>${r.times}×</span></div>`, "Nothing missed. 👍")}
+    ${d.price_watch.length ? `<h3>Prices to check</h3><div class="card">${d.price_watch.map(p => `<p class="tip">${esc(p.text)}</p>`).join("")}</div>` : ""}
+    <a class="card statement-cta" href="#/profit"><span class="badge sale">▲</span>
+      <span><b>Full profit and loss</b><br><span class="hint">Today, this week, this month</span></span></a>`;
+  view.querySelectorAll(".week").forEach(g => g.onclick = () => {
+    view.querySelectorAll(".week").forEach(x => x.classList.toggle("on", x === g));
+    $("#week-note").textContent = `Week to ${g.dataset.label}: ${naira(Number(g.dataset.kobo))}`;
+  });
+}
+
+// Eight weekly columns: one hue, rounded tops on a shared baseline, a label on the highest and the latest week
+// only; every column can be tapped (or hovered) for its value.
+function weekChart(weeks) {
+  const W = 320, H = 150, top = 18, base = 122, gap = 10, n = weeks.length;
+  const bw = (W - gap * (n + 1)) / n, max = Math.max(1, ...weeks.map(w => w.sales_kobo));
+  const peak = weeks.findIndex(w => w.sales_kobo === max);
+  const bars = weeks.map((w, i) => {
+    const h = w.sales_kobo ? Math.max(3, ((base - top) * w.sales_kobo) / max) : 0;
+    const x = gap + i * (bw + gap), y = base - h;
+    const label = i === peak || i === n - 1;
+    return `<g class="week" data-label="${esc(w.label)}" data-kobo="${w.sales_kobo}" tabindex="0">
+      <title>Week to ${esc(w.label)}: ${naira(w.sales_kobo)}</title>
+      <rect class="hit" x="${x - gap / 2}" y="${top - 14}" width="${bw + gap}" height="${base - top + 30}"></rect>
+      ${h ? `<path class="col" d="M${x},${base} V${y + 4} Q${x},${y} ${x + 4},${y} H${x + bw - 4} Q${x + bw},${y} ${x + bw},${y + 4} V${base} Z"></path>` : ""}
+      ${label && w.sales_kobo ? `<text class="val" x="${x + bw / 2}" y="${y - 5}">${naira(w.sales_kobo).replace(/,\d{3}$/, "k")}</text>` : ""}
+      ${(n - 1 - i) % 2 === 0 ? `<text class="lab" x="${x + bw / 2}" y="${base + 16}">${esc(w.label)}</text>` : ""}
+    </g>`;
+  }).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Sales by week for the last ${n} weeks">
+    <line class="axis" x1="0" x2="${W}" y1="${base}" y2="${base}"></line>${bars}</svg>`;
+}
+
 async function profit() {
   const [p, cash] = await Promise.all([api(`/api/report/pnl?period=${period}`), api("/api/report/cash")]);
   const exp = Object.entries(p.expenses_kobo || {});
@@ -822,13 +893,14 @@ async function chat() {
     const tries = [`I sold 2 ${first.name}, cash`, "Who owes me?", "How much profit this week?",
       ...(ME?.kind === "books" ? ["What should I order before resumption?"] : ["What is running low?"])];
     $("#log").innerHTML = `<div class="chat-empty">
-      <div class="msg them"><div class="body">Hello 👋 I'm Sabi, the bookkeeper and sales assistant for ${esc(ME?.shop || "your shop")}.
-Your ${products.length} products are in the books already. Tell me what you sold or bought, ask how the business is doing, or tap 🗣 and just talk to me.</div></div>
+      <div class="msg them"><div class="body">Hello 👋 I'm Sabi, the business intelligence system for ${esc(ME?.shop || "your shop")}.
+Your ${products.length} products are in the books already. Ask "how is my business doing?", or see the Insights tab. Tell me what you sold or bought, ask how the business is doing, or tap 🗣 and just talk to me.</div></div>
       <div class="starters">${tries.map(s => `<button type="button">${esc(s)}</button>`).join("")}</div></div>`;
     $("#log").querySelectorAll(".starters button").forEach(b => b.onclick = () => { $("#chat-text").value = b.textContent; $("#chat-text").focus(); });
   } else if (!messages.length) {
     $("#log").innerHTML = `<div class="chat-empty">
-      <div class="msg them"><div class="body">Hello 👋 I'm Sabi, the bookkeeper and sales assistant for ${esc(ME?.shop || "your shop")}.
+      <div class="msg them"><div class="body">Hello 👋 I'm Sabi, the business intelligence system for ${esc(ME?.shop || "your shop")}.
+I keep your books from what you tell me, then show you what is selling, what makes money and what to do next.
 Tell me what you sell, sold or bought, the way you'd say it: type it or send a voice note 🎙, in English, Pidgin, Yoruba, Igbo, Hausa, French or any language you speak.
 
 To start, send a photo 📷 of your price list, or type your products and prices.</div></div>
@@ -930,7 +1002,7 @@ function welcome() {
   try { if (localStorage.getItem(key)) return; } catch { return; }
   const ios = /iphone|ipad/i.test(navigator.userAgent);
   openSheet("Welcome to Sabi 👋", `
-    <p>Sabi keeps your books from what you tell it, answers your customers, and tells you how your business is doing.</p>
+    <p>Sabi is business intelligence for your shop. It keeps your books from what you tell it, answers your customers, and shows you what to do next: what's selling, what makes money, what's stuck, and what to order.</p>
     <ul class="plain">
       <li>💬 <b>Chat</b>: tell Sabi what you sold or bought. Type, send a voice note, or a photo of a receipt or price list.</li>
       <li>✅ Sabi asks before anything unusual goes in your books. Check what it records: it can make mistakes.</li>
@@ -1015,11 +1087,11 @@ function login(message) {
 
 // ---- router ---------------------------------------------------------------------
 
-const ROUTES = { chat, today, ledger, sales, owing, profit, posts, shop, statement };
+const ROUTES = { chat, today, ledger, sales, owing, insights, profit, posts, shop, statement };
 
 function setShop(name) {
   $("#shop").textContent = name || "Sabi";
-  document.title = `${name || "Sabi"} · Books`;
+  document.title = name ? `${name} · Sabi` : "Sabi";
 }
 
 async function route() {
@@ -1047,7 +1119,7 @@ async function route() {
   if (name !== "chat") clearInterval(chatTimer);
   if (name === "chat") $("#chat-dot").hidden = true;
   document.querySelectorAll(".tabs a").forEach(a => a.classList.toggle("on", a.dataset.tab === name));
-  $("#sub").textContent = { chat: "Talk to Sabi", today: "Today", ledger: "Every entry, with its receipt", sales: "Customer chats and orders", shop: "What Sabi tells customers", statement: "For a loan or supplier credit", owing: "Customers who owe", profit: "Profit and loss", posts: "Promotions" }[name] || "";
+  $("#sub").textContent = { chat: "Talk to Sabi", today: "Today", ledger: "Every entry, with its receipt", sales: "Customer chats and orders", shop: "What Sabi tells customers", statement: "For a loan or supplier credit", owing: "Customers who owe", insights: "What your books say", profit: "Profit and loss", posts: "Promotions" }[name] || "";
   view.innerHTML = `<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>`;
   try {
     await screen();

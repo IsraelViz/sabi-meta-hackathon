@@ -1,6 +1,8 @@
 # Sabi
 
-A WhatsApp-native agent that keeps a Nigerian trader's books from the way she already sells: voice notes in Pidgin, photos of receipts, customer DMs. Built for the Meta hackathon, Indie track ("Build for Your World"). All code in this repo was written during the event.
+**Business intelligence for small shops, built on Meta's models.** Big businesses have dashboards and analysts. A trader in a Lagos market has a notebook and her memory. Sabi gives her the same kind of intelligence. She talks to it the way she already works: voice notes in Pidgin, photos of receipts and price lists, customer chats. From that, Sabi keeps accurate books, then turns them into decisions: what is selling, what makes money, what stock is stuck, what customers want that she lacks, who owes, and what to order before the next rush. Built for the Meta hackathon, Indie track ("Build for Your World"). All code in this repo was written during the event.
+
+*Sabi* means "to know" in Nigerian Pidgin: "she sabi business". Sabi knows your business.
 
 ## Design rules (enforced in code, with tests)
 
@@ -160,6 +162,16 @@ She photographs her price list or stock notebook and says "set up my shop" (`set
 - **Sabi's voice** is a Nigerian English neural voice: Ezinne by default, or Abeo with `TTS_VOICE=en-NG-AbeoNeural`. It is Microsoft's read-aloud voice, through the open-source `edge-tts` package, with no key needed. If that service can't be reached, Sabi falls back to **Meta's MMS text-to-speech** (`facebook/mms-tts-eng`, ONNX export), run on our own server with onnxruntime. `scripts/get_voice.py` downloads MMS pinned and checksummed, and the Docker build runs it. `TTS_ENGINE=mms` uses MMS only. Code cleans the text first: money becomes "42,000 naira", "₦12.5k" becomes 12,500, and an order ref is read digit by digit. For MMS it also turns every number, class and date into words.
 - **Voice notes on WhatsApp, on request**: "reply me with voice note" makes that answer a WhatsApp voice note (`voice_replies`, this once). "Always talk to me" keeps voice on, in her settings or on a customer's contact, until they say stop. Answers with account numbers or order refs, or long ones, also come as text, because those are easier to read than to hear. Buttons, pictures and templates stay as they are.
 
+## Insights (`app/ledger/insights.py`, the app's Insights tab)
+
+The intelligence layer over the books. Last 30 days against the 30 before:
+- **What your books say:** up to seven plain sentences, each computed from the ledger. For example: sales trend (a mid-term dip after a resumption rush is named as such), the product that makes the most profit, how much of sales the top three bring, a price that loses money, stock that hasn't moved and the money tied up in it, what customers asked for that she couldn't supply, who is late paying, and what is coming (the next school resumption and what to order by when, or what will run out at her pace).
+- **Numbers:** sales and the change, gross profit and margin, money owed to her, stock value at cost, cash and bank.
+- **Charts:** sales week by week for 8 weeks (a season shows in the shape), and best sellers with their share of sales. One hue, labels on the peak and latest week only, and every bar can be tapped for its value.
+- **Lists:** top profit makers, stock that isn't moving, missed demand, prices to check, and what's coming.
+
+In chat, "how my business dey?" gets the same intelligence (`business_insights`): the two or three takeaways that matter, then one next step. The model only retells; every number and sentence is computed in code.
+
 ## How Sabi sounds (`app/agent/prompts/`, `STYLE` in `orchestrator.py`)
 
 Sabi is a cheerful business partner. It celebrates good news, uses Nigerian flavour ("Ehen!", "Oya", "E don land") and makes numbers vivid, using only the books' figures. When the news is bad, it is calm and kind. **It matches each message's tone.** A school bursar writing "Good afternoon. Kindly confirm…" gets a polished reply. A parent writing "abeg u get civic jss1?? 😩" gets warm Pidgin. The owner can fix the tone, for herself (`style`) or for her customers (`customer_style`): "always be professional with me", "you can play with my customers". The choices are auto, professional and playful.
@@ -267,7 +279,7 @@ python scripts/dev_server.py      # then open http://127.0.0.1:8000/app/
 
 ## Status
 
-Working and tested (409 tests), with the owner app also checked by hand at phone size in light and dark mode: the ledger and its database triggers, the Postgres and memory stores, the validator, posting and reversals, the amount normaliser, the agent with both personas, owner approvals, customer orders and payment claims, sales leads, handoff to the owner and follow-ups, learning the shop from its pages, the business statement and its signed links, the credit guard, restock alerts, setting up from a photo, receipts and notebook pages, the stock-take, the promotion loop, payment reminders, the public two-phone demo, WhatsApp parsing and sending, the daily and weekly summaries at her chosen time, the coach and its follow-ups, the Sabi Score, the payment alert check, the "Why?" trail, savings, shared prices, notifications, the results page, other languages (detection, French-style amounts, translation with the number check), other currencies, shopping by picture, and the bookshop (booklists, classes and editions, covers, the school year).
+Working and tested (410 tests), with the owner app also checked by hand at phone size in light and dark mode: the ledger and its database triggers, the Postgres and memory stores, the validator, posting and reversals, the amount normaliser, the agent with both personas, owner approvals, customer orders and payment claims, sales leads, handoff to the owner and follow-ups, learning the shop from its pages, the business statement and its signed links, the credit guard, restock alerts, setting up from a photo, receipts and notebook pages, the stock-take, the promotion loop, payment reminders, the public two-phone demo, WhatsApp parsing and sending, the daily and weekly summaries at her chosen time, the coach and its follow-ups, the Sabi Score, the payment alert check, the "Why?" trail, savings, shared prices, notifications, the results page, other languages (detection, French-style amounts, translation with the number check), other currencies, shopping by picture, and the bookshop (booklists, classes and editions, covers, the school year).
 
 New features run live on Baseten:
 - **Credit guard:** caught Mama Tunde (₦54,000 owed, 2 days late) before more credit was given.

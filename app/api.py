@@ -412,6 +412,13 @@ def coach_tips(request: Request):
     return {"tips": coach.tips(_store(request), limit=5)}
 
 
+@router.get("/insights")
+def business_insights(request: Request):
+    """What her books say: trends, best sellers, profit makers, stuck stock, unmet demand, what's coming."""
+    from app.ledger.insights import insights
+    return insights(_store(request))
+
+
 class SpeakIn(BaseModel):
     text: str = Field(max_length=4000)
 

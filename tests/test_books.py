@@ -184,3 +184,15 @@ def test_two_editions_added_from_a_price_list_are_linked_newest_first():
     # no stock recorded yet: every tool says the same thing about it
     assert books.class_books(ctx_for(store), "JSS2")["books"][0]["in_stock"] is True
     assert find_product(ctx_for(store, "customer"), "New General Mathematics JSS2", customer=True)["matches"][0]["in_stock"] is True
+
+
+def test_insights_say_what_the_books_say(shop):
+    from app.ledger.insights import insights
+    i = insights(shop, today=TODAY)
+    assert len(i["weekly_sales"]) == 8 and max(w["sales_kobo"] for w in i["weekly_sales"][:3]) > 0   # the September rush
+    assert i["kpis"]["sales_change_pct"] < 0 and "resumption rush" in i["takeaways"][0]
+    assert i["slow_stock"][0]["name"] == "New General Mathematics JSS3"
+    assert i["customer_demand"][0] == {"item": "Junior Secondary Agricultural Science JSS1", "times": 3}
+    assert i["forecast"]["kind"] == "school_term" and i["forecast"]["items"][0]["name"] == "Civic Education JSS1"
+    assert any("Mama Tunde owes ₦32,500" in t for t in i["takeaways"])
+    assert all(any(ch.isdigit() for ch in t) for t in i["takeaways"])   # every sentence carries its numbers

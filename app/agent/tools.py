@@ -233,6 +233,10 @@ PRICE_BOOKLIST = _fn(
     "if shown. With no lines, prices the list the shop keeps for that school and class.",
     {"items": _BOOKLIST_LINES, "school": {"type": ["string", "null"]},
      "level": {"type": ["string", "null"], "description": "the class the list is for: Primary 4, JSS1, SS2..."}})
+INSIGHTS = _fn("business_insights",
+               "Her business at a glance from the books, last 30 days against the 30 before: sales trend, best "
+               "sellers, what makes the most profit, stock not selling, what customers asked for that she lacks, "
+               "who owes, and what is coming (restock, school resumption), with the takeaways worth acting on.", {})
 VOICE = _fn("voice_replies",
             "They want to hear your answer as a voice note: 'reply with voice', 'send me voice note', 'talk to me'. "
             "this_once for this answer, always for every answer from now on, off to go back to text.",
@@ -256,7 +260,7 @@ IDENTIFY_PHOTO = _fn("identify_photo",
 
 OWNER_TOOLS = [FIND_PRODUCT, FIND_CONTACT, RECORD, READ_DOC, BATCH, STOCK_TAKE, PROMO_IDEAS, MAKE_PROMO, LEARN, SHOP_INFO, STATEMENT, SETUP_PHOTO, ADD_PRODUCTS,
                SEND_REMINDER, SET_PHONE, RECENT, REVERSE, REPORT, ASK, SET_PREFS, CHECK_PAYMENT, SCORE, MARKET, SAVE_PHOTO,
-               PRICE_BOOKLIST, CLASS_BOOKS, SAVE_BOOKLIST, TERM_RESTOCK, IDENTIFY_PHOTO, VOICE]
+               PRICE_BOOKLIST, CLASS_BOOKS, SAVE_BOOKLIST, TERM_RESTOCK, IDENTIFY_PHOTO, VOICE, INSIGHTS]
 CUSTOMER_TOOLS = [CUST_PRODUCT, MATCH_PHOTO, SEND_PHOTO, CREATE_ORDER, PAYMENT_CLAIM, MY_ORDERS, SHOP_DETAILS, HAND_TO_OWNER,
                   PRICE_BOOKLIST, CLASS_BOOKS, SET_OFFERS, VOICE]
 
@@ -591,7 +595,18 @@ OWNER_HANDLERS = {
     "price_booklist": books.price_booklist, "class_books": books.class_books, "save_booklist": books.save_booklist,
     "term_restock": lambda ctx: books.term_restock(ctx), "identify_photo": product_photos.identify_for_owner,
     "voice_replies": lambda ctx, mode: voice.set_mode(ctx, mode),
+    "business_insights": lambda ctx: _in_naira(_insights(ctx.store)),
 }
+
+
+def _insights(store):
+    from app.ledger.insights import insights
+    data = insights(store)
+    data["note"] = ("Lead with the takeaways, in her words; numbers only as given. Offer the Insights tab in the "
+                    "app for the charts.")
+    return data
+
+
 def customer_find_product(ctx, query):
     result = find_product(ctx, query, customer=True)
     sales.note_lookup(ctx, query, result["matches"])

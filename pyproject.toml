@@ -1,7 +1,7 @@
 [project]
 name = "sabi"
 version = "0.1.0"
-description = "WhatsApp-native bookkeeping and promotion agent for Nigerian traders, built on Meta's Muse models"
+description = "Business intelligence for small shops on WhatsApp: books kept from voice notes and photos, turned into decisions, built on Meta's Muse models"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",

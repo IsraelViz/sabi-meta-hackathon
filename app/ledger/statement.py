@@ -184,7 +184,7 @@ photographed on WhatsApp and kept in double-entry books by Sabi. {evidence_pct}%
 receipt attached. Entries are never edited: {s['corrections']} mistake{'s were' if s['corrections'] != 1 else ' was'} corrected
 by a visible reversal. These are the owner's own records, not audited accounts.</div>
 
-<footer><span>Prepared by Sabi · WhatsApp bookkeeping for small traders</span><span>Figures in Nigerian naira</span></footer>
+<footer><span>Prepared by Sabi · business intelligence for small shops</span><span>Figures in Nigerian naira</span></footer>
 </main>
 <button class="print" onclick="window.print()">Print / save as PDF</button>
 </body></html>"""

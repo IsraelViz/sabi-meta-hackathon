@@ -87,7 +87,7 @@ Sabi replies: **"⚠️ Before you give credit: Mama Tunde already owes ₦54,00
 
 **Screen:** a title card with the demo link and the GitHub repo.
 
-> Sabi: bookkeeper, sales assistant and loan officer's best friend, in the chat app she already uses. Built on Muse Spark Open.
+> Sabi: business intelligence for small shops, in the chat app she already uses. Built on Meta's Muse models.
 
 ---
 
