@@ -7,7 +7,7 @@ summary can say what happened after she changed it.
 from collections import Counter
 from datetime import date, timedelta
 
-from app.ledger.reports import last_purchase, tracks_stock, whole_naira as naira
+from app.ledger.reports import last_purchases, tracks_stock, whole_naira as naira
 
 TARGET_MARGIN = 20        # % a price suggestion aims for
 THIN_MARGIN = 10          # below this a margin is called thin
@@ -48,11 +48,12 @@ def tips(store, today=None, limit=3):
     sold = _sold(store, start, today)
     out = []
     best = None
+    lasts = last_purchases(store)
     for p in store.list_products():
         qty, sales, cogs = sold.get(p.id, (0, 0, 0))
         price, cost = p.sell_price_kobo, p.avg_cost_kobo
         tracked = tracks_stock(store, p.id)
-        last = last_purchase(store, p.id)
+        last = lasts.get(p.id)
         if cost and price and tracked:
             margin = round(100 * (price - cost) / price)
             fair = _round_price(cost * 100 // (100 - TARGET_MARGIN))

@@ -70,8 +70,16 @@ async function call(path, body) {
   return data;
 }
 
+const queue = [];   // what they send while the shop is answering: shown at once, sent in order after
+
 async function say(payload, shown, image) {
-  if (busy) { toast("One moment, still answering."); return; }
+  if (busy) {
+    const waiting = bubble({ role: "in", body: shown, image });
+    waiting.classList.add("pending", "queued");
+    $("#log").insertBefore(waiting, $(".typing"));
+    queue.push({ args: [payload, shown, image], waiting });
+    return;
+  }
   busy = true;
   const pending = bubble({ role: "in", body: shown, image });
   pending.classList.add("pending");
@@ -88,6 +96,8 @@ async function say(payload, shown, image) {
     if (payload.text) $("#text").value = payload.text;
   } finally {
     busy = false;
+    const next = queue.shift();
+    if (next) { next.waiting.remove(); say(...next.args); }
   }
 }
 

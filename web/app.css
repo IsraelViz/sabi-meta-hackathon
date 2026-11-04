@@ -244,6 +244,7 @@ body.chatting { padding-bottom: calc(136px + env(safe-area-inset-bottom)); }
 .msg.me a { color: inherit; }
 .msg.note { align-self: center; background: var(--chip); color: var(--muted); font-size: 13px; box-shadow: none; }
 .msg.pending { opacity: .6; }
+.msg.queued::after { content: "Waiting…"; display: block; font-size: 11px; opacity: .8; margin-top: 2px; }
 .msg img { display: block; max-width: 100%; max-height: 320px; border-radius: 12px; margin: 0 0 6px; }
 .msg .when { display: flex; justify-content: flex-end; align-items: center; gap: 6px; font-size: 11px; opacity: .65; margin-top: 2px; white-space: normal; }
 .msg .flag { border: 0; background: none; padding: 0 2px; cursor: pointer; font-size: 12px; opacity: .6; }

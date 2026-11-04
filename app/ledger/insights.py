@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import date, timedelta
 
 from app.ledger import coach
-from app.ledger.reports import debtors, cash_position, restock_advice, tracks_stock, whole_naira as naira
+from app.ledger.reports import debtors, cash_position, restock_all, tracks_stock, whole_naira as naira
 
 DAYS = 30
 WEEKS = 8
@@ -107,7 +107,7 @@ def _forecast(store, today, products):
         return {"kind": "school_term", "headline": f"{r['next_term'].capitalize()} resumes {r['resumes']}",
                 "order_by": r["order_by"], "items": [{"name": o["name"], "order_qty": o["order_qty"]} for o in r["order"][:5]],
                 "clear": [c["name"] for c in r["clear_old_editions"]]}
-    due = [restock_advice(store, pid, today) for pid in products]
+    due = restock_all(store, today)
     due = sorted((d for d in due if d["due"]), key=lambda d: d["days_left"] if d["days_left"] is not None else 99)
     return {"kind": "restock", "headline": "Running low at your pace",
             "items": [{"name": d["name"], "order_qty": d["order_qty"], "days_left": d["days_left"]} for d in due[:5]]}

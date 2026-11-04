@@ -11,6 +11,7 @@ import threading
 
 from app.ledger.pg_store import PostgresStore
 from app.ledger.seed import DEMO_SHOPS, add_demo_history, demo_store
+from app.shops import slugify
 
 log = logging.getLogger("sabi.judge")
 NAME = "Broadway Books"
@@ -37,11 +38,27 @@ def ensure(shops, phone, pin):
                               "and deleted_at is null", (RETIRED,)).fetchall():
         log.info("deleting the earlier demo shop %s", r["id"])
         shops.delete(r["id"])
+    # A demo shop a restart cut off while it was loading never got its sign-in: nobody can use it, and it
+    # holds the shop's link name. This start-up makes the shop again, so it goes.
+    for r in shops.db.execute("select id from pilot.shops where name = %s and owner_name = 'Ife' "
+                              "and owner_phone is null and deleted_at is null", (NAME,)).fetchall():
+        log.info("deleting a half-made demo shop %s", r["id"])
+        shops.delete(r["id"])
     sid = find(shops, phone)
     if sid:
         shops.accounts.set_login(sid, phone, pin)
+        _take_link_name(shops, sid)
         return
     threading.Thread(target=_create, args=(shops, phone, pin), daemon=True).start()
+
+
+def _take_link_name(shops, sid):
+    """The demo shop's link is /c/broadway-books, even if a half-made one held that name when it was made."""
+    want = slugify(NAME)
+    if shops.row(sid)["slug"] != want and not shops.db.execute(
+            "select 1 from pilot.shops where slug = %s", (want,)).fetchone():
+        shops.db.execute("update pilot.shops set slug = %s where id = %s", (want, sid))
+        log.info("demo shop %s now at /c/%s", sid, want)
 
 
 def _create(shops, phone, pin):

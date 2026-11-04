@@ -6,7 +6,7 @@ buttons send their words to Sabi as if she typed them ("How's business?" gets th
 import re
 from datetime import timedelta
 
-from app.ledger.reports import LAGOS, debtors, profit_and_loss, restock_advice, whole_naira as naira
+from app.ledger.reports import LAGOS, debtors, profit_and_loss, restock_all, whole_naira as naira
 from app.ledger.store import now
 
 GREETING = re.compile(
@@ -48,12 +48,12 @@ def snapshot(store, at=None):
         d = late[0]
         lines.append(f"⏰ {d['name']} owes {naira(d['owes_kobo'])}, {d['overdue_days']} day{'s' if d['overdue_days'] != 1 else ''} late"
                      + (f" (and {len(late) - 1} more late)" if len(late) > 1 else ""))
-    out = [p for p in store.list_products() if restock_advice(store, p.id, today)["due"]]
-    sold_out = [p for p in out if store.stock_on_hand(p.id) <= 0]
+    out = [r for r in restock_all(store, today) if r["due"]]
+    sold_out = [r for r in out if r["stock"] <= 0]
     if sold_out:
-        lines.append(f"📦 {sold_out[0].name} is sold out" + (f", {len(out) - 1} more running low" if len(out) > 1 else ""))
+        lines.append(f"📦 {sold_out[0]['name']} is sold out" + (f", {len(out) - 1} more running low" if len(out) > 1 else ""))
     elif out:
-        lines.append(f"📦 {len(out)} product{'s are' if len(out) != 1 else ' is'} running low, starting with {out[0].name}")
+        lines.append(f"📦 {len(out)} product{'s are' if len(out) != 1 else ' is'} running low, starting with {out[0]['name']}")
     waiting = len(store.pending_approvals())
     if waiting:
         lines.append(f"✋ {waiting} thing{'s' if waiting != 1 else ''} waiting for your answer above")

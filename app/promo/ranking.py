@@ -8,6 +8,7 @@ about to run out.
 from dataclasses import dataclass
 from datetime import date, timedelta
 
+from app.ledger.reports import units_sold
 from app.normalize.amounts import naira
 
 WEIGHTS = {"cover": 0.4, "margin": 0.35, "slow": 0.25}
@@ -36,12 +37,14 @@ def rank(store, today=None, limit=3):
     week_start = today - timedelta(days=6)
     month_start = today - timedelta(days=27)
     picks = []
+    entries = store.list_entries(start=month_start)      # one read of the books for every product
+    week_sold, month_sold = units_sold(entries, week_start, today), units_sold(entries, month_start, today)
     for p in store.list_products():
         on_hand = store.stock_on_hand(p.id) - store.reserved(p.id)
         if on_hand <= max(p.reorder_level, 0):
             continue
-        this_week = store.sales_qty(p.id, week_start, today)
-        weekly_avg = store.sales_qty(p.id, month_start, today) / 4
+        this_week = week_sold[p.id]
+        weekly_avg = month_sold[p.id] / 4
         cover_weeks = on_hand / max(weekly_avg, 0.25)
         margin = (p.sell_price_kobo - p.avg_cost_kobo) / p.sell_price_kobo if p.avg_cost_kobo and p.sell_price_kobo else None
         slow = 1.0 if weekly_avg == 0 else _clamp(1 - this_week / weekly_avg)

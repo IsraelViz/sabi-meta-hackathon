@@ -260,8 +260,9 @@ class Shops:
         self.db.execute("update pilot.shops set owner_phone = null, pin_hash = null where id = %s", (sid,))
         self.db.execute("delete from pilot.messages where shop_id = %s", (sid,))
         self.db.execute("delete from pilot.feedback where shop_id = %s", (sid,))
-        self.db.execute("update pilot.shops set deleted_at = now(), token_hash = %s, name = 'deleted', owner_name = null "
-                        "where id = %s", (_hash(secrets.token_hex(16)), sid))
+        # Its link name is freed too ("slug~id"), so a new shop of that name gets the plain link.
+        self.db.execute("update pilot.shops set deleted_at = now(), token_hash = %s, name = 'deleted', owner_name = null, "
+                        "slug = slug || '~' || id where id = %s", (_hash(secrets.token_hex(16)), sid))
         import shutil
         shutil.rmtree(self.media_root / sid, ignore_errors=True)
 

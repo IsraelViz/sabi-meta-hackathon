@@ -74,7 +74,7 @@ def debtors(store, today=None):
 def tracks_stock(store, product_id):
     """False until stock of it has ever come in (opening stock or a purchase). A new shop often starts with
     products and prices only: their sales are recorded without stock questions, and nothing nags to restock them."""
-    return any(m.product_id == product_id and m.qty > 0 for e in store.list_entries() for m in e.stock_moves)
+    return store.ever_stocked(product_id)
 
 
 def low_stock(store):
@@ -99,7 +99,7 @@ def report(store, kind, period="today"):
     if kind == "sales":
         return sales_pipeline(store)
     if kind == "restock":
-        return [r for r in (restock_advice(store, p.id) for p in store.list_products()) if r["due"]]
+        return [r for r in restock_all(store) if r["due"]]
     if kind == "savings":
         return savings(store)
     if kind == "coach":
@@ -121,7 +121,7 @@ def daily_summary_text(store, today=None):
         top = ", ".join(f"{d['name']} {naira(d['owes_kobo'])}" + (f" ({d['overdue_days']}d late)" if d["overdue_days"] else "")
                         for d in owed[:3])
         parts.append(f"Owing you: {top}" + (f" +{len(owed) - 3} more" if len(owed) > 3 else "") + ".")
-    restock = [r for r in (restock_advice(store, p.id, today) for p in store.list_products()) if r["due"]]
+    restock = [r for r in restock_all(store, today) if r["due"]]
     if restock:
         parts.append("Restock soon: " + ", ".join(
             f"{r['name']} ({r['stock']} left" + (f", ~{r['days_left']:g} days" if r["days_left"] is not None else "") + ")"
@@ -215,7 +215,7 @@ def weekly_summary_text(store, today=None):
         parts.append("Owing you " + naira(sum(d["owes_kobo"] for d in owed)) + ":\n" + "\n".join(
             f"• {d['name']} {naira(d['owes_kobo'])}" + (f", {d['overdue_days']} days late" if d["overdue_days"] else "")
             for d in owed[:8]) + (f"\n• +{len(owed) - 8} more" if len(owed) > 8 else ""))
-    restock = [r for r in (restock_advice(store, p.id, today) for p in store.list_products()) if r["due"]]
+    restock = [r for r in restock_all(store, today) if r["due"]]
     if restock:
         parts.append("Restock soon: " + ", ".join(f"{r['name']} (order ~{r['order_qty']})" for r in restock[:4]) + ".")
     took = orders_taken(store, today, days=7)
@@ -327,30 +327,68 @@ def credit_profile(store, contact_id, today=None):
 # --- restock: how fast each product sells --------------------------------------------------
 
 def last_purchase(store, product_id):
-    for e in reversed(store.list_entries()):
+    return last_purchases(store).get(product_id)
+
+
+def last_purchases(store, entries=None):
+    """Every product's latest purchase, from one read of the books: {product_id: {unit_cost_kobo, date, supplier}}."""
+    latest = {}
+    for e in entries if entries is not None else store.list_entries():
         if e.kind != "purchase" or e.status == "reversed":
             continue
         for l in e.lines:
-            if l.account == "inventory" and l.product_id == product_id and l.qty:
-                supplier = store.get_contact(e.contact_id) if e.contact_id else None
-                return {"unit_cost_kobo": l.debit_kobo // l.qty, "date": e.entry_date,
-                        "supplier_id": e.contact_id, "supplier": supplier.name if supplier else None}
-    return None
+            if l.account == "inventory" and l.product_id and l.qty:
+                latest[l.product_id] = (e, l)
+    names = {}
+    out = {}
+    for pid, (e, l) in latest.items():
+        if e.contact_id and e.contact_id not in names:
+            c = store.get_contact(e.contact_id)
+            names[e.contact_id] = c.name if c else None
+        out[pid] = {"unit_cost_kobo": l.debit_kobo // l.qty, "date": e.entry_date, "supplier_id": e.contact_id,
+                    "supplier": names.get(e.contact_id)}
+    return out
+
+
+def _advice(p, stock, sold, stocked, last, days):
+    per_day = sold / days
+    days_left = round(stock / per_day, 1) if per_day else None
+    due = stocked and (stock <= p.reorder_level or (days_left is not None and days_left <= 3))
+    order = max(math.ceil(per_day * 7) - stock, p.reorder_level * 2 - stock, 1)
+    return {"product_id": p.id, "name": p.name, "unit": p.base_unit, "stock": stock, "per_day": round(per_day, 1),
+            "days_left": days_left, "due": due, "order_qty": order, "last_purchase": last}
 
 
 def restock_advice(store, product_id, today=None, days=14):
     """Stock left, days left at the recent pace, and how many to order for about a week."""
     today = today or date.today()
     p = store.get_product(product_id)
-    stock = store.stock_on_hand(product_id)
     sold = store.sales_qty(product_id, start=today - timedelta(days=days - 1), end=today)
-    per_day = sold / days
-    days_left = round(stock / per_day, 1) if per_day else None
-    never_stocked = not tracks_stock(store, product_id)
-    due = not never_stocked and (stock <= p.reorder_level or (days_left is not None and days_left <= 3))
-    order = max(math.ceil(per_day * 7) - stock, p.reorder_level * 2 - stock, 1)
-    return {"product_id": p.id, "name": p.name, "unit": p.base_unit, "stock": stock, "per_day": round(per_day, 1),
-            "days_left": days_left, "due": due, "order_qty": order, "last_purchase": last_purchase(store, product_id)}
+    return _advice(p, store.stock_on_hand(product_id), sold, tracks_stock(store, product_id),
+                   last_purchase(store, product_id), days)
+
+
+def units_sold(entries, start, end):
+    """{product_id: units sold from start to end}, leaving out cancelled sales (like store.sales_qty)."""
+    sold = Counter()
+    for e in entries:
+        if e.status == "reversed" or e.kind == "reversal" or not (start <= (e.entry_date or end) <= end):
+            continue
+        for l in e.lines:
+            if l.account == "sales" and l.product_id:
+                sold[l.product_id] += l.qty or 0
+    return sold
+
+
+def restock_all(store, today=None, days=14):
+    """restock_advice for every product from one read of the books: pages and greetings that check the whole
+    shelf would otherwise ask the database several times per product."""
+    today = today or date.today()
+    entries = store.list_entries()
+    sold = units_sold(entries, today - timedelta(days=days - 1), today)
+    lasts = last_purchases(store, entries)
+    return [_advice(p, store.stock_on_hand(p.id), sold[p.id], tracks_stock(store, p.id), lasts.get(p.id), days)
+            for p in store.list_products()]
 
 
 # --- what Sabi saved her ----------------------------------------------------------------------

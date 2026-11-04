@@ -846,10 +846,17 @@ function showMessages(list) {
   try { localStorage.setItem("sabi.seen", String(chatLast)); } catch { /* private mode */ }
 }
 
+const chatQueue = [];   // what she sends while Sabi is answering: shown at once, sent in order after
+
 async function chatSend(payload, shown, image, audio) {
-  if (chatBusy) { toast("One moment, Sabi is still answering."); return; }
-  chatBusy = true;
   const log = $("#log");
+  if (chatBusy) {
+    const waiting = bubble({ id: 0, role: "in", body: shown, image, audio, buttons: [] });
+    waiting.classList.add("pending", "queued");
+    log?.insertBefore(waiting, $(".typing", log));
+    return new Promise(resolve => chatQueue.push({ args: [payload, shown, image, audio], waiting, resolve }));
+  }
+  chatBusy = true;
   const pending = bubble({ id: 0, role: "in", body: shown, image, audio, buttons: [] });
   pending.classList.add("pending");
   log.appendChild(pending);
@@ -868,6 +875,8 @@ async function chatSend(payload, shown, image, audio) {
     if (payload.text) $("#chat-text").value = payload.text;
   } finally {
     chatBusy = false;
+    const next = chatQueue.shift();
+    if (next) { next.waiting.remove(); chatSend(...next.args).then(next.resolve); }
   }
 }
 

@@ -137,3 +137,16 @@ def test_the_earlier_demo_shop_is_deleted_to_free_its_number(shops, monkeypatch)
     monkeypatch.setattr(judge, "_create", lambda *a: None)     # the new one is built in the test above
     judge.ensure(shops, "2347015065065", "2026")
     assert shops.row(row["id"]) is None and judge.find(shops, "2347015065065") is None
+
+
+def test_a_half_made_demo_shop_gives_its_link_back(shops, monkeypatch):  # noqa: F811
+    """A restart cut the first build short: that shop goes, and the real one gets /c/broadway-books."""
+    from app import judge
+    half, _ = shops.create("Broadway Books", "books", "Ife")              # never got its sign-in
+    real, _ = shops.create("Broadway Books", "books", "Ife")
+    shops.accounts.set_login(real["id"], "2347015065065", "2026")
+    assert (half["slug"], real["slug"]) == ("broadway-books", "broadway-books-2")
+    monkeypatch.setattr(judge, "_create", lambda *a: None)
+    judge.ensure(shops, "2347015065065", "2026")
+    assert shops.row(half["id"]) is None
+    assert shops.row(real["id"])["slug"] == "broadway-books" and shops.by_slug("broadway-books").id == real["id"]

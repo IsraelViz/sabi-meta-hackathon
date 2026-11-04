@@ -170,6 +170,9 @@ class MemoryStore:
     def stock_on_hand(self, pid):
         return sum(m.qty for e in self.entries.values() for m in e.stock_moves if m.product_id == pid)
 
+    def ever_stocked(self, pid):
+        return any(m.product_id == pid and m.qty > 0 for e in self.entries.values() for m in e.stock_moves)
+
     def account_balance(self, code, contact_id=None, start=None, end=None):
         """Debit-positive balance for asset/expense; callers flip sign for the others."""
         return sum(l.debit_kobo - l.credit_kobo for _, l in self._lines(start, end)

@@ -4,6 +4,7 @@ The rules are enforced twice: Python checks give readable errors, and the
 triggers in schema.sql make them impossible to bypass from any client.
 """
 import json
+import time
 from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -24,9 +25,12 @@ _CONTACT_COLS = ("id", "name", "kind", "phone", "aliases", "ig_handle", "last_in
 
 
 class PostgresStore:
+    FRESH_FOR = 3.0      # seconds the stock levels are reused (any write here clears them sooner)
+
     def __init__(self, dsn, schema=None):
         """`schema` keeps one shop's books in its own Postgres schema (pilot shops share a database)."""
         self.conn = psycopg.connect(dsn, row_factory=dict_row, autocommit=True)
+        self._levels_cache = None
         if schema:
             if not schema.replace("_", "").isalnum():
                 raise ValueError(f"bad schema name {schema!r}")
@@ -145,6 +149,7 @@ class PostgresStore:
         for l in entry.lines:
             if l.account not in known:
                 raise LedgerError(f"unknown account {l.account!r}")
+        self._levels_cache = None
         try:
             with self.conn.transaction(), self.conn.cursor() as cur:
                 if entry.reverses_id:
@@ -191,6 +196,8 @@ class PostgresStore:
             raise LedgerError(str(e).splitlines()[0]) from e
         except psycopg.errors.IntegrityError as e:
             raise LedgerError(str(e).splitlines()[0]) from e
+        finally:
+            self._levels_cache = None
         return self.get_entry(eid)
 
     @staticmethod
@@ -223,9 +230,26 @@ class PostgresStore:
                              " and (%s::date is null or entry_date <= %s::date)",
                              (since_seq, start, start, end, end))
 
+    def _levels(self):
+        """Every product's stock, which ever had stock, and what open orders hold, in two queries. Pages ask
+        once per product, and each query crosses the sea to the database, so one answer serves them all."""
+        t = time.monotonic()
+        if self._levels_cache is None or t - self._levels_cache[0] > self.FRESH_FOR:
+            rows = self.conn.execute("select product_id, coalesce(sum(qty), 0) as q, bool_or(qty > 0) as stocked"
+                                     " from stock_moves group by product_id").fetchall()
+            held = {}
+            for o in self.open_orders():
+                for i in o["items"]:
+                    held[i["product_id"]] = held.get(i["product_id"], 0) + i["qty"]
+            self._levels_cache = (t, {r["product_id"]: r["q"] for r in rows},
+                                  {r["product_id"] for r in rows if r["stocked"]}, held)
+        return self._levels_cache
+
     def stock_on_hand(self, pid):
-        with self.conn.cursor() as cur:
-            return self._stock(cur, pid)
+        return self._levels()[1].get(pid, 0)
+
+    def ever_stocked(self, pid):
+        return pid in self._levels()[2]
 
     def account_balance(self, code, contact_id=None, start=None, end=None):
         row = self.conn.execute(
@@ -281,6 +305,7 @@ class PostgresStore:
                           " where id = %s", (Jsonb(json.loads(json.dumps(extracted, default=str))), eid))
 
     def add_order(self, contact_id, items, total_kobo, ttl_hours=24):
+        self._levels_cache = None
         return self.conn.execute(
             "insert into orders (id, contact_id, items, total_kobo, expires_at) values (%s, %s, %s, %s, %s) returning *",
             (new_id(), contact_id, Jsonb(items), total_kobo, now() + timedelta(hours=ttl_hours))).fetchone()
@@ -289,6 +314,7 @@ class PostgresStore:
         return self.conn.execute("select * from orders where id = %s", (oid,)).fetchone()
 
     def update_order(self, oid, **fields):
+        self._levels_cache = None
         sets = ", ".join(f"{k} = %({k})s" for k in fields)
         return self.conn.execute(f"update orders set {sets} where id = %(oid)s returning *", {**fields, "oid": oid}).fetchone()
 
@@ -298,7 +324,7 @@ class PostgresStore:
             " and (%s::text is null or contact_id = %s::text) order by created_at", (contact_id, contact_id)).fetchall()
 
     def reserved(self, pid):
-        return sum(i["qty"] for o in self.open_orders() for i in o["items"] if i["product_id"] == pid)
+        return self._levels()[3].get(pid, 0)
 
     def add_approval(self, kind, payload, question, options):
         return self.conn.execute(
