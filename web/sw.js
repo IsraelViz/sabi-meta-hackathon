@@ -1,8 +1,8 @@
 // Offline support: the app shell is cached; API reads are network-first, and the
 // last good answer is shown (marked with x-sabi-cache) when the phone is offline.
-const SHELL = "sabi-shell-v16";
+const SHELL = "sabi-shell-v18";
 const DATA = "sabi-data-v1";
-const SHELL_FILES = ["./", "index.html", "app.css", "app.js", "manifest.webmanifest", "talk.js", "icon.svg", "icon-192.png", "icon-180.png"];
+const SHELL_FILES = ["./", "index.html", "app.css", "app.js", "manifest.webmanifest", "icons.js", "talk.js", "icon.svg", "icon-192.png", "icon-180.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(SHELL).then(c => c.addAll(SHELL_FILES)).then(() => self.skipWaiting()));

@@ -26,12 +26,13 @@
   </section>
 
   <form class="composer" id="composer" hidden>
-    <label class="cbtn" title="Send a photo (e.g. your payment screenshot)">📷<input type="file" accept="image/*" hidden id="photo"></label>
+    <label class="cbtn" title="Send a photo (e.g. your payment screenshot)" aria-label="Send a photo"><span data-icon="camera"></span><input type="file" accept="image/*" hidden id="photo"></label>
     <input id="text" class="ctext" placeholder="Ask about prices, place an order…" autocomplete="off" enterkeyhint="send">
-    <button type="button" class="cbtn" id="mic" title="Voice note" hidden>🎙</button>
-    <button class="cbtn send" title="Send">➤</button>
+    <button type="button" class="cbtn" id="mic" title="Voice note" aria-label="Record a voice note" hidden><span data-icon="mic"></span></button>
+    <button class="cbtn send" title="Send" aria-label="Send"><span data-icon="send"></span></button>
   </form>
   <div id="toast" class="toast" hidden></div>
+  <script src="/app/icons.js"></script>
   <script src="/chat/chat.js"></script>
 </body>
 </html>

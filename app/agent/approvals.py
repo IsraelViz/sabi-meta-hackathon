@@ -48,7 +48,7 @@ def describe(p: Proposal, store):
         return f"{label} {who}: {text}"
     s = f"{label}: {text}{total}"
     if who:
-        s += f" — {who}"
+        s += f", {who}"
     if p.kind in ("sale", "purchase") and p.paid_kobo is not None:
         s += ", paid" if p.paid_kobo == p.items_total_kobo else (", on credit" if p.paid_kobo == 0 else f", paid {naira(p.paid_kobo)}")
         if p.paid_kobo and p.payment_account:

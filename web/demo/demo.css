@@ -70,6 +70,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .icon.send { background: var(--accent); color: var(--accent-ink); }
 .icon.mic.rec { background: var(--bad); color: #fff; animation: pulse 1s ease-in-out infinite; }
 .icon.talk.talking { background: var(--accent, #0a7); color: #fff; }
+.icon svg.ico, .icon .ico { width: 21px; height: 21px; display: block; }
+.icon > span[data-icon] { display: grid; place-items: center; }
 .icon.talk[data-state="listening"] { background: var(--bad); animation: pulse 1s ease-in-out infinite; }
 .voice-note { display: block; width: 100%; max-width: 260px; height: 36px; margin-top: 6px; }
 @keyframes pulse { 50% { opacity: .6; } }

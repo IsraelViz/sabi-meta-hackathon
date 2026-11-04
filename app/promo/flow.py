@@ -72,7 +72,7 @@ def make_promo(ctx, services, product_id=None, scene="default"):
     product = ctx.store.get_product(pick.product_id)
 
     if not ctx.image_data_url:
-        ctx.tell_owner(f"My pick to promote: *{product.name}* — {pick.reason}.\n"
+        ctx.tell_owner(f"My pick to promote: *{product.name}*. {pick.reason[:1].upper() + pick.reason[1:]}.\n"
                        f"Send me a clear photo of it on your shelf and I'll make the post.")
         return {"status": "need_photo", "product_id": product.id, "name": product.name, "why": pick.reason}
 

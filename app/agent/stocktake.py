@@ -53,7 +53,7 @@ def run(ctx, product_ids=None):
             a = ctx.store.add_approval(
                 "stock_gap", {"product_id": p.id, "qty": gap, "books": books, "counted": counted, "evidence_id": ctx.evidence_id},
                 f"Books say {books} {p.base_unit} of {p.name}; I count {counted} in the photo. "
-                f"{gap} missing — what happened?",
+                f"{gap} missing. What happened?",
                 [{"label": "Sold, not recorded", "patch": [], "action": "sold"},
                  {"label": "Damaged or lost", "patch": [], "action": "lost"},
                  {"label": "Recount", "patch": [], "action": "recount"}])

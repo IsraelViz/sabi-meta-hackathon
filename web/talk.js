@@ -11,7 +11,8 @@
   const QUIET_MS = 1100;      // this much quiet after speech = she finished
   const MAX_MS = 25000;       // one turn is never longer than this
   const IDLE_MS = 15000;      // nobody spoke: talk mode stops by itself
-  const LABEL = { off: "🗣", listening: "●", thinking: "…", speaking: "🔊" };
+  const ICON = { off: "talk", listening: "listening", thinking: "thinking", speaking: "speaking" };
+  const LABEL = { off: "🗣", listening: "●", thinking: "…", speaking: "🔊" };   // if icons.js isn't loaded
   const TITLE = { off: "Talk to Sabi (hands-free)", listening: "Listening… tap to stop", thinking: "Sabi is thinking…",
     speaking: "Sabi is talking… tap to stop" };
 
@@ -25,7 +26,9 @@
 
     setState(s) {
       this.state = s;
-      this.button.textContent = LABEL[s];
+      if (window.SabiIcon) this.button.innerHTML = SabiIcon(ICON[s]);
+      else this.button.textContent = LABEL[s];
+      this.button.setAttribute("aria-label", TITLE[s]);
       this.button.title = TITLE[s];
       this.button.classList.toggle("talking", s !== "off");
       this.button.dataset.state = s;

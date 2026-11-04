@@ -68,3 +68,12 @@ def test_she_changes_the_tone_by_asking(store):
     Agent(store, llm, OWNER, 10**9).handle(sender=OWNER, text="Please always be professional with me")
     from app import prefs
     assert prefs.get(store)["style"] == "professional"
+
+
+def test_no_dashes_in_what_sabi_sends(store):
+    from app.agent.orchestrator import no_dashes
+    assert no_dashes("*Mama Tunde — ₦32,500* — was due 01 Nov") == "*Mama Tunde, ₦32,500*, was due 01 Nov"
+    assert no_dashes("Open Mon–Sat, 9am–6pm") == "Open Mon-Sat, 9am-6pm"
+    llm = ScriptedLLM(["Good evening — Things Fall Apart is ₦3,500 — in stock."])
+    out = Agent(store, llm, OWNER, 10**9).handle(sender=OWNER, text="price of things fall apart?").outbox
+    assert "—" not in out[-1].body and out[-1].body == "Good evening, Things Fall Apart is ₦3,500, in stock."

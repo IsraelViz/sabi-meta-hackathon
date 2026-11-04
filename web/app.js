@@ -879,11 +879,11 @@ async function chat() {
   chatLast = 0;
   view.innerHTML = `<div class="chat-log" id="log"></div>
     <form class="composer" id="composer">
-      <label class="cbtn" title="Send a photo">📷<input type="file" accept="image/*" hidden id="chat-photo"></label>
+      <label class="cbtn" title="Send a photo" aria-label="Send a photo">${SabiIcon("camera")}<input type="file" accept="image/*" hidden id="chat-photo"></label>
       <input id="chat-text" class="ctext" placeholder="Tell Sabi what happened…" autocomplete="off" enterkeyhint="send">
-      <button type="button" class="cbtn" id="chat-mic" title="Voice note">🎙</button>
-      <button type="button" class="cbtn" id="chat-talk" title="Talk to Sabi (hands-free)">🗣</button>
-      <button class="cbtn send" title="Send">➤</button>
+      <button type="button" class="cbtn" id="chat-mic" title="Voice note" aria-label="Record a voice note">${SabiIcon("mic")}</button>
+      <button type="button" class="cbtn talk" id="chat-talk" title="Talk to Sabi (hands-free)" aria-label="Talk to Sabi">${SabiIcon("talk")}</button>
+      <button class="cbtn send" title="Send" aria-label="Send">${SabiIcon("send")}</button>
     </form>`;
   const { messages } = await api("/api/chat");
   const products = messages.length ? [] : await api("/api/products").catch(() => []);
@@ -894,7 +894,7 @@ async function chat() {
       ...(ME?.kind === "books" ? ["What should I order before resumption?"] : ["What is running low?"])];
     $("#log").innerHTML = `<div class="chat-empty">
       <div class="msg them"><div class="body">Hello 👋 I'm Sabi, the business intelligence system for ${esc(ME?.shop || "your shop")}.
-Your ${products.length} products are in the books already. Ask "how is my business doing?", or see the Insights tab. Tell me what you sold or bought, ask how the business is doing, or tap 🗣 and just talk to me.</div></div>
+Your ${products.length} products are in the books already. Ask "how is my business doing?", or see the Insights tab. Tell me what you sold or bought, ask how the business is doing, or tap the sound-wave button and just talk to me.</div></div>
       <div class="starters">${tries.map(s => `<button type="button">${esc(s)}</button>`).join("")}</div></div>`;
     $("#log").querySelectorAll(".starters button").forEach(b => b.onclick = () => { $("#chat-text").value = b.textContent; $("#chat-text").focus(); });
   } else if (!messages.length) {
@@ -956,14 +956,14 @@ To start, send a photo 📷 of your price list, or type your products and prices
       rec.ondataavailable = ev => chunks.push(ev.data);
       rec.onstop = async () => {
         stream.getTracks().forEach(t => t.stop());
-        mic.classList.remove("rec"); mic.textContent = "🎙";
+        mic.classList.remove("rec"); mic.innerHTML = SabiIcon("mic");
         const blob = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
         rec = null;
-        if (blob.size < 1500) { toast("That was too short. Tap 🎙, talk, then tap ■."); return; }
+        if (blob.size < 1500) { toast("That was too short. Tap the microphone, talk, then tap it again."); return; }
         chatSend({ audio: await blobToDataUrl(blob) }, "🎙 Voice note…");
       };
       rec.start();
-      mic.classList.add("rec"); mic.textContent = "■";
+      mic.classList.add("rec"); mic.innerHTML = SabiIcon("stop");
       toast("Recording… tap ■ when you finish.");
       setTimeout(() => rec?.state === "recording" && rec.stop(), 120000);
     } catch { toast("Allow the microphone to send voice notes."); }

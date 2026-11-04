@@ -253,7 +253,7 @@ for (const [who, phone] of Object.entries(phones)) {
       rec.ondataavailable = ev => chunks.push(ev.data);
       rec.onstop = async () => {
         stream.getTracks().forEach(t => t.stop());
-        mic.classList.remove("rec"); mic.textContent = "🎙";
+        mic.classList.remove("rec"); mic.innerHTML = SabiIcon("mic");
         const blob = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
         rec = null;
         if (blob.size < 1500) { toast("That was too short."); return; }
@@ -261,7 +261,7 @@ for (const [who, phone] of Object.entries(phones)) {
         send(who, { audio: await blobToDataUrl(blob) });
       };
       rec.start();
-      mic.classList.add("rec"); mic.textContent = "■";
+      mic.classList.add("rec"); mic.innerHTML = SabiIcon("stop");
       setTimeout(() => rec?.state === "recording" && rec.stop(), 60000);
     } catch {
       toast("Microphone permission was refused.");

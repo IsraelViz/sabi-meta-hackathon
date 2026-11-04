@@ -1,9 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#E85D04"/>
-  <rect x="136" y="112" width="240" height="288" rx="28" fill="#FFF8EB"/>
-  <rect x="176" y="168" width="160" height="20" rx="10" fill="#E85D04"/>
-  <rect x="176" y="224" width="120" height="20" rx="10" fill="#21180F" opacity=".35"/>
-  <rect x="176" y="272" width="140" height="20" rx="10" fill="#21180F" opacity=".35"/>
-  <circle cx="326" cy="340" r="34" fill="#2E7D32"/>
-  <path d="M310 340l11 11 21-23" stroke="#fff" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <title>Sabi</title>
+  <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#F27A1A"/><stop offset="1" stop-color="#D44500"/></linearGradient></defs>
+  <rect width="512" height="512" rx="112" fill="url(#g)"/>
+  <rect x="100" y="108" width="312" height="244" rx="76" fill="#FFF8EB"/>
+  <polygon points="150,330 124,414 226,346" fill="#FFF8EB"/>
+  <path d="M166,296 V260 Q166,246 180,246 H198 Q212,246 212,260 V296 Z" fill="#E85D04"/>
+  <path d="M234,296 V220 Q234,206 248,206 H266 Q280,206 280,220 V296 Z" fill="#E85D04"/>
+  <path d="M302,296 V170 Q302,156 316,156 H334 Q348,156 348,170 V296 Z" fill="#E85D04"/>
+  <polygon points="360.0,120.0 369.0,141.0 390.0,150.0 369.0,159.0 360.0,180.0 351.0,159.0 330.0,150.0 351.0,141.0" fill="#FFC43D"/>
 </svg>

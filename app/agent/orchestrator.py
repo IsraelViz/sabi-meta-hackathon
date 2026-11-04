@@ -50,6 +50,18 @@ STYLE = {
 }
 
 
+def no_dashes(text):
+    """Sabi doesn't write em or en dashes: "Mama Tunde — ₦32,500" -> "Mama Tunde, ₦32,500",
+    "Mon–Wed" -> "Mon-Wed". Run on every message before it goes out."""
+    if not text or not re.search("[—–]", text):
+        return text
+    t = re.sub(r"(?m)^\s*[—–]\s*", "", text)                  # a dash opening a line
+    t = re.sub(r"(?<=\S)[–—](?=\S)", "-", t)                    # ranges: 9am–6pm, Mon–Wed
+    t = re.sub(r"[ \t]*[—–][ \t]*", ", ", t)                    # the rest: a pause, so a comma
+    t = re.sub(r",[ \t]*([,.!?:;])", r"\1", t)                  # no ", ." or ", ,"
+    return t
+
+
 def _system_prompt(persona, store, customer_name=None, owner_said=None):
     business = getattr(store, "business", {})
     text = (PROMPTS / f"{persona}.md").read_text(encoding="utf-8")
@@ -168,6 +180,9 @@ class Agent:
             ctx.say("Sorry, something went wrong on my side. Please send that again.")
         finally:
             self._localize(ctx, raw)
+            for o in ctx.outbox:
+                if not o.template:      # an approved template is sent exactly as Meta approved it
+                    o.body = no_dashes(o.body)
             self.store.log_run(trigger=channel, persona=persona, evidence_id=ctx.evidence_id,
                                tool_calls=ctx.tool_log, reply=[o.body for o in ctx.outbox],
                                latency_ms=int((time.monotonic() - started) * 1000), error=error)

@@ -327,3 +327,12 @@ ul.plain li { margin: 8px 0; }
 .tip { margin: 0 0 8px; font-size: 14px; } .tip:last-child { margin: 0; }
 .empty.small { padding: 14px; font-size: 14px; }
 .hbar .hint, .card .line small.hint { color: var(--muted); font-size: 12px; }
+/* icons (web/icons.js) */
+.cbtn { color: var(--ink); }
+.cbtn .ico { width: 21px; height: 21px; display: block; }
+.cbtn.talk.talking { background: var(--accent); color: var(--accent-ink); }
+.cbtn.talk[data-state="listening"] { background: var(--bad); color: #fff; animation: pulse 1s ease-in-out infinite; }
+.cbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.top .title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.top .title > div { min-width: 0; }
+.top .mark { width: 34px; height: 34px; border-radius: 9px; flex: none; }
