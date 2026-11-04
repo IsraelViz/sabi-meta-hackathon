@@ -1,4 +1,5 @@
-"""The judges' demo account: the demo bookshop as an app shop, opened with one tap.
+"""The judges' demo account: Ife's Broadway Books (Agbowo, Ibadan) as an app shop, opened with one tap.
+Her shelf, October's trading and November so far are loaded on start-up; the rest is left to show live.
 
 It is a pilot shop, so it has Chat, talk mode, voice, booklists and flyers, and nothing in it can
 reach a real WhatsApp number. It signs in with the owner's number and DEMO_LOGIN_PIN; the sign-in
@@ -12,7 +13,8 @@ from app.ledger.pg_store import PostgresStore
 from app.ledger.seed import DEMO_SHOPS, add_demo_history, demo_store
 
 log = logging.getLogger("sabi.judge")
-NAME = "Nkechi Books & Stationery"
+NAME = "Broadway Books"
+RETIRED = "Nkechi Books & Stationery"     # the earlier demo shop: deleted so its number is free
 
 
 def masked(phone):
@@ -26,18 +28,16 @@ def find(shops, phone):
     return r["id"] if r else None
 
 
-def ensure(shops, phone, pin, old_phone=None):
+def ensure(shops, phone, pin):
     """On start-up: make the demo shop if it isn't there yet (in the background: it takes minutes on a
-    far-away database), and keep its PIN the configured one. Given a new DEMO_LOGIN_PHONE, the demo shop moves
-    to it from `old_phone` (OWNER_PHONE), so the owner's own number is free for a shop of her own."""
+    far-away database), and keep its PIN the configured one. The earlier demo shop is deleted first."""
     if not (shops and phone and pin):
         return
+    for r in shops.db.execute("select id from pilot.shops where name = %s and owner_name = 'Nkechi' "
+                              "and deleted_at is null", (RETIRED,)).fetchall():
+        log.info("deleting the earlier demo shop %s", r["id"])
+        shops.delete(r["id"])
     sid = find(shops, phone)
-    if sid is None and old_phone and old_phone != phone:
-        held = find(shops, old_phone)
-        if held and shops.row(held)["name"] == NAME:
-            sid = held
-            log.info("judges' demo shop moved to DEMO_LOGIN_PHONE; %s is free", masked(old_phone))
     if sid:
         shops.accounts.set_login(sid, phone, pin)
         return
@@ -47,8 +47,8 @@ def ensure(shops, phone, pin, old_phone=None):
 def _create(shops, phone, pin):
     from app.promo.publish import LocalMedia
 
-    path = DEMO_SHOPS["bookshop"]
-    row, _ = shops.create(NAME, "books", "Nkechi")
+    path = DEMO_SHOPS["broadway"]
+    row, _ = shops.create(NAME, "books", "Ife")
     sid = row["id"]
     seed = PostgresStore(shops.dsn, schema=f"shop_{sid}")
     try:

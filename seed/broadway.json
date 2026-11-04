@@ -1,0 +1,2340 @@
+{
+ "business": {
+  "name": "Broadway Books",
+  "timezone": "Africa/Lagos",
+  "shop_info": "Agbowo, Ibadan. Open 9am to 5pm. Self development, business, finance, leadership, Christian books, fiction and stationery.",
+  "payment_details": "Cash or transfer. Ask us for the account details."
+ },
+ "opening_days_ago": 40,
+ "products": [
+  {
+   "id": "bb-next-africa",
+   "name": "Next Africa",
+   "base_unit": "copy",
+   "sell_price_kobo": 400000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Next Africa",
+    "category": "Business"
+   }
+  },
+  {
+   "id": "bb-real-estate-advantages",
+   "name": "Real Estate Advantages",
+   "base_unit": "copy",
+   "sell_price_kobo": 370000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Real Estate Advantages",
+    "category": "Business"
+   }
+  },
+  {
+   "id": "bb-good-to-great",
+   "name": "Good to Great",
+   "base_unit": "copy",
+   "sell_price_kobo": 570000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Good to Great",
+    "category": "Business"
+   }
+  },
+  {
+   "id": "bb-100-laws-of-business",
+   "name": "100 Laws of Business",
+   "base_unit": "copy",
+   "sell_price_kobo": 400000,
+   "reorder_level": 0,
+   "details": {
+    "title": "100 Laws of Business",
+    "category": "Business"
+   }
+  },
+  {
+   "id": "bb-the-12-week-mba",
+   "name": "The 12 Week MBA",
+   "base_unit": "copy",
+   "sell_price_kobo": 380000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The 12 Week MBA",
+    "category": "Business"
+   }
+  },
+  {
+   "id": "bb-crucial-conversations",
+   "name": "Crucial Conversations",
+   "base_unit": "copy",
+   "sell_price_kobo": 300000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Crucial Conversations",
+    "category": "Business",
+    "author": "Kerry Patterson, Joseph Grenny"
+   }
+  },
+  {
+   "id": "bb-the-man-died",
+   "name": "The Man Died",
+   "base_unit": "copy",
+   "sell_price_kobo": 250000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Man Died",
+    "category": "Fiction"
+   }
+  },
+  {
+   "id": "bb-jero-plays",
+   "name": "Jero Plays",
+   "base_unit": "copy",
+   "sell_price_kobo": 90000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Jero Plays",
+    "category": "Fiction"
+   }
+  },
+  {
+   "id": "bb-god-s-bits-of-wood",
+   "name": "God's Bits of Wood",
+   "base_unit": "copy",
+   "sell_price_kobo": 240000,
+   "reorder_level": 0,
+   "details": {
+    "title": "God's Bits of Wood",
+    "category": "Fiction"
+   }
+  },
+  {
+   "id": "bb-pride-and-prejudice",
+   "name": "Pride and Prejudice",
+   "base_unit": "copy",
+   "sell_price_kobo": 270000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Pride and Prejudice",
+    "category": "Fiction"
+   }
+  },
+  {
+   "id": "bb-a-place-called-tomorrow",
+   "name": "A Place Called Tomorrow",
+   "base_unit": "copy",
+   "sell_price_kobo": 270000,
+   "reorder_level": 0,
+   "details": {
+    "title": "A Place Called Tomorrow",
+    "category": "Fiction"
+   }
+  },
+  {
+   "id": "bb-reflection-in-the-dark",
+   "name": "Reflection in the Dark",
+   "base_unit": "copy",
+   "sell_price_kobo": 250000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Reflection in the Dark",
+    "category": "Fiction"
+   }
+  },
+  {
+   "id": "bb-great-expectations",
+   "name": "Great Expectations",
+   "base_unit": "copy",
+   "sell_price_kobo": 300000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Great Expectations",
+    "category": "Fiction"
+   }
+  },
+  {
+   "id": "bb-bleak-house",
+   "name": "Bleak House",
+   "base_unit": "copy",
+   "sell_price_kobo": 300000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Bleak House",
+    "category": "Fiction"
+   }
+  },
+  {
+   "id": "bb-little-dorrit",
+   "name": "Little Dorrit",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Little Dorrit",
+    "category": "Fiction"
+   }
+  },
+  {
+   "id": "bb-scavengers-of-the-soul",
+   "name": "Scavengers of the Soul",
+   "base_unit": "copy",
+   "sell_price_kobo": 270000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Scavengers of the Soul",
+    "category": "Fiction"
+   }
+  },
+  {
+   "id": "bb-poverty-riches-and-wealth",
+   "name": "Poverty, Riches and Wealth",
+   "base_unit": "copy",
+   "sell_price_kobo": 380000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Poverty, Riches and Wealth",
+    "category": "Finance"
+   }
+  },
+  {
+   "id": "bb-happy-sexy-millionaire",
+   "name": "Happy Sexy Millionaire",
+   "base_unit": "copy",
+   "sell_price_kobo": 380000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Happy Sexy Millionaire",
+    "category": "Finance"
+   }
+  },
+  {
+   "id": "bb-the-unfair-advantage",
+   "name": "The Unfair Advantage",
+   "base_unit": "copy",
+   "sell_price_kobo": 400000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Unfair Advantage",
+    "category": "Finance"
+   }
+  },
+  {
+   "id": "bb-rich-dad-poor-dad",
+   "name": "Rich Dad Poor Dad",
+   "base_unit": "copy",
+   "sell_price_kobo": 300000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Rich Dad Poor Dad",
+    "category": "Finance"
+   }
+  },
+  {
+   "id": "bb-secrets-of-the-millionaire-mind",
+   "name": "Secrets of the Millionaire Mind",
+   "base_unit": "copy",
+   "sell_price_kobo": 280000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Secrets of the Millionaire Mind",
+    "category": "Finance"
+   }
+  },
+  {
+   "id": "bb-wealth-money-cannot-buy",
+   "name": "Wealth Money Cannot Buy",
+   "base_unit": "copy",
+   "sell_price_kobo": 600000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Wealth Money Cannot Buy",
+    "category": "Finance"
+   }
+  },
+  {
+   "id": "bb-psychology-of-wealth",
+   "name": "Psychology of Wealth",
+   "base_unit": "copy",
+   "sell_price_kobo": 320000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Psychology of Wealth",
+    "category": "Finance"
+   }
+  },
+  {
+   "id": "bb-you-are-a-badass-at-making-money",
+   "name": "You Are a Badass at Making Money",
+   "base_unit": "copy",
+   "sell_price_kobo": 300000,
+   "reorder_level": 0,
+   "details": {
+    "title": "You Are a Badass at Making Money",
+    "category": "Finance"
+   }
+  },
+  {
+   "id": "bb-the-psychology-of-money",
+   "name": "The Psychology of Money",
+   "base_unit": "copy",
+   "sell_price_kobo": 360000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Psychology of Money",
+    "category": "Finance"
+   }
+  },
+  {
+   "id": "bb-7-habits-of-highly-effective-people",
+   "name": "7 Habits of Highly Effective People",
+   "base_unit": "copy",
+   "sell_price_kobo": 380000,
+   "reorder_level": 0,
+   "details": {
+    "title": "7 Habits of Highly Effective People",
+    "category": "Productivity and health"
+   }
+  },
+  {
+   "id": "bb-tiny-habits",
+   "name": "Tiny Habits",
+   "base_unit": "copy",
+   "sell_price_kobo": 300000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Tiny Habits",
+    "category": "Productivity and health"
+   }
+  },
+  {
+   "id": "bb-digital-minimalism",
+   "name": "Digital Minimalism",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Digital Minimalism",
+    "category": "Productivity and health"
+   }
+  },
+  {
+   "id": "bb-stop-chasing-influencers",
+   "name": "Stop Chasing Influencers",
+   "base_unit": "copy",
+   "sell_price_kobo": 300000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Stop Chasing Influencers",
+    "category": "Productivity and health",
+    "author": "Kimanzi Constable, Jared Easley"
+   }
+  },
+  {
+   "id": "bb-discipline-is-destiny",
+   "name": "Discipline Is Destiny",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Discipline Is Destiny",
+    "category": "Productivity and health"
+   }
+  },
+  {
+   "id": "bb-those-who-live-without-discipline",
+   "name": "Those Who Live Without Discipline",
+   "base_unit": "copy",
+   "sell_price_kobo": 250000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Those Who Live Without Discipline",
+    "category": "Productivity and health"
+   }
+  },
+  {
+   "id": "bb-hope-help-and-healing",
+   "name": "Hope Help and Healing",
+   "base_unit": "copy",
+   "sell_price_kobo": 250000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Hope Help and Healing",
+    "category": "Productivity and health"
+   }
+  },
+  {
+   "id": "bb-changes-that-heal",
+   "name": "Changes That Heal",
+   "base_unit": "copy",
+   "sell_price_kobo": 250000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Changes That Heal",
+    "category": "Productivity and health"
+   }
+  },
+  {
+   "id": "bb-emotional-intelligence",
+   "name": "Emotional Intelligence",
+   "base_unit": "copy",
+   "sell_price_kobo": 370000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Emotional Intelligence",
+    "category": "Productivity and health",
+    "author": "Daniel Goleman"
+   }
+  },
+  {
+   "id": "bb-80-20-sales-and-marketing",
+   "name": "80/20 Sales and Marketing",
+   "base_unit": "copy",
+   "sell_price_kobo": 360000,
+   "reorder_level": 0,
+   "details": {
+    "title": "80/20 Sales and Marketing",
+    "category": "Sales and marketing"
+   }
+  },
+  {
+   "id": "bb-the-psychology-of-selling",
+   "name": "The Psychology of Selling",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Psychology of Selling",
+    "category": "Sales and marketing"
+   }
+  },
+  {
+   "id": "bb-marketing-101",
+   "name": "Marketing 101",
+   "base_unit": "copy",
+   "sell_price_kobo": 400000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Marketing 101",
+    "category": "Sales and marketing"
+   }
+  },
+  {
+   "id": "bb-sales-dogs",
+   "name": "Sales Dogs",
+   "base_unit": "copy",
+   "sell_price_kobo": 380000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Sales Dogs",
+    "category": "Sales and marketing"
+   }
+  },
+  {
+   "id": "bb-sell-like-crazy",
+   "name": "Sell Like Crazy",
+   "base_unit": "copy",
+   "sell_price_kobo": 450000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Sell Like Crazy",
+    "category": "Sales and marketing"
+   }
+  },
+  {
+   "id": "bb-this-is-strategy",
+   "name": "This Is Strategy",
+   "base_unit": "copy",
+   "sell_price_kobo": 370000,
+   "reorder_level": 0,
+   "details": {
+    "title": "This Is Strategy",
+    "category": "Sales and marketing",
+    "author": "Seth Godin"
+   }
+  },
+  {
+   "id": "bb-100m-leads",
+   "name": "$100M Leads",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "$100M Leads",
+    "category": "Sales and marketing"
+   }
+  },
+  {
+   "id": "bb-act-like-a-lady-think-like-a-man",
+   "name": "Act Like a Lady Think Like a Man",
+   "base_unit": "copy",
+   "sell_price_kobo": 250000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Act Like a Lady Think Like a Man",
+    "category": "Self development",
+    "author": "Steve Harvey"
+   }
+  },
+  {
+   "id": "bb-art-of-detachment",
+   "name": "Art of Detachment",
+   "base_unit": "copy",
+   "sell_price_kobo": 240000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Art of Detachment",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-boundaries",
+   "name": "Boundaries",
+   "base_unit": "copy",
+   "sell_price_kobo": 320000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Boundaries",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-built-on-purpose",
+   "name": "Built on Purpose",
+   "base_unit": "copy",
+   "sell_price_kobo": 250000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Built on Purpose",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-surrounded-by-bad-bosses",
+   "name": "Surrounded by Bad Bosses",
+   "base_unit": "copy",
+   "sell_price_kobo": 400000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Surrounded by Bad Bosses",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-surrounded-by-setbacks",
+   "name": "Surrounded by Setbacks",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Surrounded by Setbacks",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-surrounded-by-energy-vampires",
+   "name": "Surrounded by Energy Vampires",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Surrounded by Energy Vampires",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-can-t-hurt-me",
+   "name": "Can't Hurt Me",
+   "base_unit": "copy",
+   "sell_price_kobo": 320000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Can't Hurt Me",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-change-your-thinking",
+   "name": "Change Your Thinking",
+   "base_unit": "copy",
+   "sell_price_kobo": 310000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Change Your Thinking",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-collaborating-with-the-enemy",
+   "name": "Collaborating with the Enemy",
+   "base_unit": "copy",
+   "sell_price_kobo": 300000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Collaborating with the Enemy",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-contagious",
+   "name": "Contagious",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Contagious",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-eat-what-you-kill",
+   "name": "Eat What You Kill",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Eat What You Kill",
+    "category": "Self development",
+    "author": "Sam Taggart"
+   }
+  },
+  {
+   "id": "bb-everything-is-f-cked",
+   "name": "Everything Is F*cked",
+   "base_unit": "copy",
+   "sell_price_kobo": 490000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Everything Is F*cked",
+    "category": "Self development",
+    "author": "Mark Manson"
+   }
+  },
+  {
+   "id": "bb-failing-forward",
+   "name": "Failing Forward",
+   "base_unit": "copy",
+   "sell_price_kobo": 300000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Failing Forward",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-goals",
+   "name": "Goals!",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Goals!",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-good-vibes",
+   "name": "Good Vibes",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Good Vibes",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-ikigai",
+   "name": "Ikigai",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Ikigai",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-the-laws-of-human-nature",
+   "name": "The Laws of Human Nature",
+   "base_unit": "copy",
+   "sell_price_kobo": 650000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Laws of Human Nature",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-the-magic-of-thinking-big",
+   "name": "The Magic of Thinking Big",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Magic of Thinking Big",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-man-s-search-for-meaning",
+   "name": "Man's Search for Meaning",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Man's Search for Meaning",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-master-your-time",
+   "name": "Master Your Time",
+   "base_unit": "copy",
+   "sell_price_kobo": 240000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Master Your Time",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-mastery",
+   "name": "Mastery",
+   "base_unit": "copy",
+   "sell_price_kobo": 500000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Mastery",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-mindset",
+   "name": "Mindset",
+   "base_unit": "copy",
+   "sell_price_kobo": 420000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Mindset",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-the-obstacle-is-the-way",
+   "name": "The Obstacle Is the Way",
+   "base_unit": "copy",
+   "sell_price_kobo": 300000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Obstacle Is the Way",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-the-pivot-year",
+   "name": "The Pivot Year",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Pivot Year",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-the-power-of-positive-thinking",
+   "name": "The Power of Positive Thinking",
+   "base_unit": "copy",
+   "sell_price_kobo": 270000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Power of Positive Thinking",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-read-people-like-a-book",
+   "name": "Read People Like a Book",
+   "base_unit": "copy",
+   "sell_price_kobo": 450000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Read People Like a Book",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-the-power-of-your-subconscious-mind",
+   "name": "The Power of Your Subconscious Mind",
+   "base_unit": "copy",
+   "sell_price_kobo": 600000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Power of Your Subconscious Mind",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-surrounded-by-liars",
+   "name": "Surrounded by Liars",
+   "base_unit": "copy",
+   "sell_price_kobo": 320000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Surrounded by Liars",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-surrounded-by-narcissists",
+   "name": "Surrounded by Narcissists",
+   "base_unit": "copy",
+   "sell_price_kobo": 320000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Surrounded by Narcissists",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-surrounded-by-psychopaths",
+   "name": "Surrounded by Psychopaths",
+   "base_unit": "copy",
+   "sell_price_kobo": 320000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Surrounded by Psychopaths",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-the-mountain-is-you",
+   "name": "The Mountain Is You",
+   "base_unit": "copy",
+   "sell_price_kobo": 300000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Mountain Is You",
+    "category": "Self development",
+    "author": "Brianna Wiest"
+   }
+  },
+  {
+   "id": "bb-think-like-a-monk",
+   "name": "Think Like a Monk",
+   "base_unit": "copy",
+   "sell_price_kobo": 300000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Think Like a Monk",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-unlimited-power",
+   "name": "Unlimited Power",
+   "base_unit": "copy",
+   "sell_price_kobo": 570000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Unlimited Power",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-winning-the-mind-battle",
+   "name": "Winning the Mind Battle",
+   "base_unit": "copy",
+   "sell_price_kobo": 250000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Winning the Mind Battle",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-you-are-a-badass",
+   "name": "You Are a Badass",
+   "base_unit": "copy",
+   "sell_price_kobo": 300000,
+   "reorder_level": 0,
+   "details": {
+    "title": "You Are a Badass",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-you-become-what-you-think",
+   "name": "You Become What You Think",
+   "base_unit": "copy",
+   "sell_price_kobo": 300000,
+   "reorder_level": 0,
+   "details": {
+    "title": "You Become What You Think",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-battlefield-of-the-mind",
+   "name": "Battlefield of the Mind",
+   "base_unit": "copy",
+   "sell_price_kobo": 370000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Battlefield of the Mind",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-beauty-for-ashes",
+   "name": "Beauty for Ashes",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Beauty for Ashes",
+    "category": "Christian",
+    "author": "Joyce Meyer"
+   }
+  },
+  {
+   "id": "bb-billy-graham-dialogue",
+   "name": "Billy Graham: Dialogue",
+   "base_unit": "copy",
+   "sell_price_kobo": 270000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Billy Graham: Dialogue",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-classic-sermon",
+   "name": "Classic Sermon",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Classic Sermon",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-the-purpose-driven-life",
+   "name": "The Purpose Driven Life",
+   "base_unit": "copy",
+   "sell_price_kobo": 400000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Purpose Driven Life",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-erasing-hell",
+   "name": "Erasing Hell",
+   "base_unit": "copy",
+   "sell_price_kobo": 200000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Erasing Hell",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-fit-to-be-tied",
+   "name": "Fit to Be Tied",
+   "base_unit": "copy",
+   "sell_price_kobo": 270000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Fit to Be Tied",
+    "category": "Christian",
+    "author": "Bill and Lynne Hybels"
+   }
+  },
+  {
+   "id": "bb-the-five-love-languages",
+   "name": "The Five Love Languages",
+   "base_unit": "copy",
+   "sell_price_kobo": 270000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Five Love Languages",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-good-morning-holy-spirit",
+   "name": "Good Morning Holy Spirit",
+   "base_unit": "copy",
+   "sell_price_kobo": 310000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Good Morning Holy Spirit",
+    "category": "Christian",
+    "author": "Benny Hinn"
+   }
+  },
+  {
+   "id": "bb-growing-up-spiritually",
+   "name": "Growing Up Spiritually",
+   "base_unit": "copy",
+   "sell_price_kobo": 300000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Growing Up Spiritually",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-he-gave-gift-unto-men",
+   "name": "He Gave Gift unto Men",
+   "base_unit": "copy",
+   "sell_price_kobo": 300000,
+   "reorder_level": 0,
+   "details": {
+    "title": "He Gave Gift unto Men",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-he-motions-by-t-d-jakes",
+   "name": "He-Motions by T.D. Jakes",
+   "base_unit": "copy",
+   "sell_price_kobo": 260000,
+   "reorder_level": 0,
+   "details": {
+    "title": "He-Motions by T.D. Jakes",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-hosting-his-presence",
+   "name": "Hosting His Presence",
+   "base_unit": "copy",
+   "sell_price_kobo": 300000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Hosting His Presence",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-imitation-of-christ",
+   "name": "Imitation of Christ",
+   "base_unit": "copy",
+   "sell_price_kobo": 150000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Imitation of Christ",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-knowing-god",
+   "name": "Knowing God",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Knowing God",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-letter-to-my-daughter",
+   "name": "Letter to my Daughter",
+   "base_unit": "copy",
+   "sell_price_kobo": 250000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Letter to my Daughter",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-letter-to-my-son",
+   "name": "Letter to my Son",
+   "base_unit": "copy",
+   "sell_price_kobo": 250000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Letter to my Son",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-little-black-sheep",
+   "name": "Little Black Sheep",
+   "base_unit": "copy",
+   "sell_price_kobo": 250000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Little Black Sheep",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-love-the-way-to-victory",
+   "name": "Love, the Way to Victory",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Love, the Way to Victory",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-never-give-up",
+   "name": "Never Give Up",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Never Give Up",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-no-more-crumbs",
+   "name": "No More Crumbs",
+   "base_unit": "copy",
+   "sell_price_kobo": 250000,
+   "reorder_level": 0,
+   "details": {
+    "title": "No More Crumbs",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-plans-purposes-and-pursuits",
+   "name": "Plans, Purposes and Pursuits",
+   "base_unit": "copy",
+   "sell_price_kobo": 280000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Plans, Purposes and Pursuits",
+    "category": "Christian",
+    "author": "Kenneth E. Hagin"
+   }
+  },
+  {
+   "id": "bb-rediscovering-the-kingdom",
+   "name": "Rediscovering the Kingdom",
+   "base_unit": "copy",
+   "sell_price_kobo": 550000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Rediscovering the Kingdom",
+    "category": "Christian",
+    "author": "Myles Munroe"
+   }
+  },
+  {
+   "id": "bb-seize-the-day",
+   "name": "Seize the Day",
+   "base_unit": "copy",
+   "sell_price_kobo": 310000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Seize the Day",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-sermon-on-the-mount",
+   "name": "Sermon on the Mount",
+   "base_unit": "copy",
+   "sell_price_kobo": 270000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Sermon on the Mount",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-spirit-controlled-temperament",
+   "name": "Spirit Controlled Temperament",
+   "base_unit": "copy",
+   "sell_price_kobo": 400000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Spirit Controlled Temperament",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-the-artist-s-way",
+   "name": "The Artist's Way",
+   "base_unit": "copy",
+   "sell_price_kobo": 270000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Artist's Way",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-the-faith-study-course",
+   "name": "The Faith Study Course",
+   "base_unit": "copy",
+   "sell_price_kobo": 280000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Faith Study Course",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-the-pilgrim-s-progress",
+   "name": "The Pilgrim's Progress",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Pilgrim's Progress",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-the-power-of-a-praying-wife",
+   "name": "The Power of a Praying Wife",
+   "base_unit": "copy",
+   "sell_price_kobo": 240000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Power of a Praying Wife",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-the-secret-of-happiness",
+   "name": "The Secret of Happiness",
+   "base_unit": "copy",
+   "sell_price_kobo": 220000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Secret of Happiness",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-understanding-the-purpose-and-power-of-w",
+   "name": "Understanding the Purpose and Power of Woman",
+   "base_unit": "copy",
+   "sell_price_kobo": 300000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Understanding the Purpose and Power of Woman",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-unleashing-heaven-s-breath",
+   "name": "Unleashing Heaven's Breath",
+   "base_unit": "copy",
+   "sell_price_kobo": 380000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Unleashing Heaven's Breath",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-where-in-the-world-is-osama-bin-laden",
+   "name": "Where in the World Is Osama Bin Laden",
+   "base_unit": "copy",
+   "sell_price_kobo": 200000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Where in the World Is Osama Bin Laden",
+    "category": "History"
+   }
+  },
+  {
+   "id": "bb-the-pursuit-of-happyness",
+   "name": "The Pursuit of Happyness",
+   "base_unit": "copy",
+   "sell_price_kobo": 250000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Pursuit of Happyness",
+    "category": "History"
+   }
+  },
+  {
+   "id": "bb-blood-river",
+   "name": "Blood River",
+   "base_unit": "copy",
+   "sell_price_kobo": 290000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Blood River",
+    "category": "History"
+   }
+  },
+  {
+   "id": "bb-hitler-s-secret-book",
+   "name": "Hitler's Secret Book",
+   "base_unit": "copy",
+   "sell_price_kobo": 250000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Hitler's Secret Book",
+    "category": "History"
+   }
+  },
+  {
+   "id": "bb-tozer-on-christian-leadership",
+   "name": "Tozer on Christian Leadership",
+   "base_unit": "copy",
+   "sell_price_kobo": 320000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Tozer on Christian Leadership",
+    "category": "Leadership"
+   }
+  },
+  {
+   "id": "bb-winning-with-people",
+   "name": "Winning with People",
+   "base_unit": "copy",
+   "sell_price_kobo": 320000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Winning with People",
+    "category": "Leadership"
+   }
+  },
+  {
+   "id": "bb-the-21-irrefutable-laws-of-leadership",
+   "name": "The 21 Irrefutable Laws of Leadership",
+   "base_unit": "copy",
+   "sell_price_kobo": 320000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The 21 Irrefutable Laws of Leadership",
+    "category": "Leadership"
+   }
+  },
+  {
+   "id": "bb-10-laws-of-leadership",
+   "name": "10 Laws of Leadership",
+   "base_unit": "copy",
+   "sell_price_kobo": 430000,
+   "reorder_level": 0,
+   "details": {
+    "title": "10 Laws of Leadership",
+    "category": "Leadership"
+   }
+  },
+  {
+   "id": "bb-the-self-aware-leader",
+   "name": "The Self Aware Leader",
+   "base_unit": "copy",
+   "sell_price_kobo": 300000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Self Aware Leader",
+    "category": "Leadership"
+   }
+  },
+  {
+   "id": "bb-leading-in-tough-times",
+   "name": "Leading in Tough Times",
+   "base_unit": "copy",
+   "sell_price_kobo": 280000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Leading in Tough Times",
+    "category": "Leadership"
+   }
+  },
+  {
+   "id": "bb-101-essays-that-will-change-the-way-you-",
+   "name": "101 Essays That Will Change the Way You Think",
+   "base_unit": "copy",
+   "sell_price_kobo": 680000,
+   "reorder_level": 0,
+   "details": {
+    "title": "101 Essays That Will Change the Way You Think",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-the-power-of-a-praying-husband",
+   "name": "The Power of a Praying Husband",
+   "base_unit": "copy",
+   "sell_price_kobo": 500000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Power of a Praying Husband",
+    "category": "Christian",
+    "author": "Stormie Omartian"
+   }
+  },
+  {
+   "id": "bb-gifted-hands",
+   "name": "Gifted Hands",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Gifted Hands",
+    "category": "Biography"
+   }
+  },
+  {
+   "id": "bb-think-big",
+   "name": "Think Big",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Think Big",
+    "category": "Biography"
+   }
+  },
+  {
+   "id": "bb-the-chronicles-of-narnia",
+   "name": "The Chronicles of Narnia",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Chronicles of Narnia",
+    "category": "Fiction"
+   }
+  },
+  {
+   "id": "bb-make-today-count",
+   "name": "Make Today Count",
+   "base_unit": "copy",
+   "sell_price_kobo": 330000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Make Today Count",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-how-successful-people-lead",
+   "name": "How Successful People Lead",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "How Successful People Lead",
+    "category": "Leadership"
+   }
+  },
+  {
+   "id": "bb-how-successful-people-grow",
+   "name": "How Successful People Grow",
+   "base_unit": "copy",
+   "sell_price_kobo": 350000,
+   "reorder_level": 0,
+   "details": {
+    "title": "How Successful People Grow",
+    "category": "Leadership"
+   }
+  },
+  {
+   "id": "bb-you-have-a-brain",
+   "name": "You Have a Brain",
+   "base_unit": "copy",
+   "sell_price_kobo": 370000,
+   "reorder_level": 0,
+   "details": {
+    "title": "You Have a Brain",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-why-you-act-the-way-you-do",
+   "name": "Why You Act the Way You Do",
+   "base_unit": "copy",
+   "sell_price_kobo": 480000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Why You Act the Way You Do",
+    "category": "Christian"
+   }
+  },
+  {
+   "id": "bb-how-to-stop-worrying-and-start-living",
+   "name": "How to Stop Worrying and Start Living",
+   "base_unit": "copy",
+   "sell_price_kobo": 480000,
+   "reorder_level": 0,
+   "details": {
+    "title": "How to Stop Worrying and Start Living",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-deep-work",
+   "name": "Deep Work",
+   "base_unit": "copy",
+   "sell_price_kobo": 600000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Deep Work",
+    "category": "Productivity and health"
+   }
+  },
+  {
+   "id": "bb-there-was-a-country",
+   "name": "There Was a Country",
+   "base_unit": "copy",
+   "sell_price_kobo": 550000,
+   "reorder_level": 0,
+   "details": {
+    "title": "There Was a Country",
+    "category": "History"
+   }
+  },
+  {
+   "id": "bb-the-millionaire-fastlane",
+   "name": "The Millionaire Fastlane",
+   "base_unit": "copy",
+   "sell_price_kobo": 550000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Millionaire Fastlane",
+    "category": "Finance"
+   }
+  },
+  {
+   "id": "bb-nemesis",
+   "name": "Nemesis",
+   "base_unit": "copy",
+   "sell_price_kobo": 320000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Nemesis",
+    "category": "Fiction"
+   }
+  },
+  {
+   "id": "bb-developing-the-leader-within-you",
+   "name": "Developing the Leader Within You",
+   "base_unit": "copy",
+   "sell_price_kobo": 450000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Developing the Leader Within You",
+    "category": "Leadership"
+   }
+  },
+  {
+   "id": "bb-the-almanack-of-naval-ravikant",
+   "name": "The Almanack of Naval Ravikant",
+   "base_unit": "copy",
+   "sell_price_kobo": 600000,
+   "reorder_level": 0,
+   "details": {
+    "title": "The Almanack of Naval Ravikant",
+    "category": "Finance"
+   }
+  },
+  {
+   "id": "bb-things-i-wish-i-had-known",
+   "name": "Things I Wish I Had Known",
+   "base_unit": "copy",
+   "sell_price_kobo": 500000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Things I Wish I Had Known",
+    "category": "Self development"
+   }
+  },
+  {
+   "id": "bb-a5-notebook",
+   "name": "A5 Notebook",
+   "base_unit": "piece",
+   "sell_price_kobo": 250000,
+   "reorder_level": 0,
+   "details": {
+    "title": "A5 Notebook",
+    "category": "Stationery"
+   }
+  },
+  {
+   "id": "bb-highlighter",
+   "name": "Highlighter",
+   "base_unit": "piece",
+   "sell_price_kobo": 70000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Highlighter",
+    "category": "Stationery"
+   }
+  },
+  {
+   "id": "bb-sticky-notes",
+   "name": "Sticky Notes",
+   "base_unit": "pack",
+   "sell_price_kobo": 130000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Sticky Notes",
+    "category": "Stationery"
+   }
+  },
+  {
+   "id": "bb-eraser-with-case",
+   "name": "Eraser with Case",
+   "base_unit": "piece",
+   "sell_price_kobo": 130000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Eraser with Case",
+    "category": "Stationery"
+   }
+  },
+  {
+   "id": "bb-gel-pen",
+   "name": "Gel Pen",
+   "base_unit": "piece",
+   "sell_price_kobo": 70000,
+   "reorder_level": 0,
+   "details": {
+    "title": "Gel Pen",
+    "category": "Stationery"
+   }
+  }
+ ],
+ "contacts": [
+  {
+   "id": "c-adebayo",
+   "name": "Mrs Adebayo",
+   "aliases": [
+    "Mummy Ayo"
+   ]
+  }
+ ],
+ "opening_stock": [
+  {
+   "product_id": "bb-next-africa",
+   "qty": 1,
+   "unit_cost_kobo": 240000
+  },
+  {
+   "product_id": "bb-real-estate-advantages",
+   "qty": 1,
+   "unit_cost_kobo": 220000
+  },
+  {
+   "product_id": "bb-good-to-great",
+   "qty": 1,
+   "unit_cost_kobo": 340000
+  },
+  {
+   "product_id": "bb-100-laws-of-business",
+   "qty": 1,
+   "unit_cost_kobo": 240000
+  },
+  {
+   "product_id": "bb-the-12-week-mba",
+   "qty": 1,
+   "unit_cost_kobo": 230000
+  },
+  {
+   "product_id": "bb-crucial-conversations",
+   "qty": 1,
+   "unit_cost_kobo": 180000
+  },
+  {
+   "product_id": "bb-the-man-died",
+   "qty": 1,
+   "unit_cost_kobo": 150000
+  },
+  {
+   "product_id": "bb-jero-plays",
+   "qty": 1,
+   "unit_cost_kobo": 55000
+  },
+  {
+   "product_id": "bb-god-s-bits-of-wood",
+   "qty": 1,
+   "unit_cost_kobo": 145000
+  },
+  {
+   "product_id": "bb-pride-and-prejudice",
+   "qty": 2,
+   "unit_cost_kobo": 160000
+  },
+  {
+   "product_id": "bb-a-place-called-tomorrow",
+   "qty": 1,
+   "unit_cost_kobo": 160000
+  },
+  {
+   "product_id": "bb-reflection-in-the-dark",
+   "qty": 3,
+   "unit_cost_kobo": 150000
+  },
+  {
+   "product_id": "bb-great-expectations",
+   "qty": 1,
+   "unit_cost_kobo": 180000
+  },
+  {
+   "product_id": "bb-bleak-house",
+   "qty": 1,
+   "unit_cost_kobo": 180000
+  },
+  {
+   "product_id": "bb-little-dorrit",
+   "qty": 1,
+   "unit_cost_kobo": 210000
+  },
+  {
+   "product_id": "bb-scavengers-of-the-soul",
+   "qty": 2,
+   "unit_cost_kobo": 180000
+  },
+  {
+   "product_id": "bb-poverty-riches-and-wealth",
+   "qty": 1,
+   "unit_cost_kobo": 230000
+  },
+  {
+   "product_id": "bb-happy-sexy-millionaire",
+   "qty": 1,
+   "unit_cost_kobo": 230000
+  },
+  {
+   "product_id": "bb-the-unfair-advantage",
+   "qty": 1,
+   "unit_cost_kobo": 240000
+  },
+  {
+   "product_id": "bb-rich-dad-poor-dad",
+   "qty": 2,
+   "unit_cost_kobo": 180000
+  },
+  {
+   "product_id": "bb-secrets-of-the-millionaire-mind",
+   "qty": 1,
+   "unit_cost_kobo": 170000
+  },
+  {
+   "product_id": "bb-wealth-money-cannot-buy",
+   "qty": 2,
+   "unit_cost_kobo": 360000
+  },
+  {
+   "product_id": "bb-psychology-of-wealth",
+   "qty": 1,
+   "unit_cost_kobo": 190000
+  },
+  {
+   "product_id": "bb-you-are-a-badass-at-making-money",
+   "qty": 3,
+   "unit_cost_kobo": 180000
+  },
+  {
+   "product_id": "bb-the-psychology-of-money",
+   "qty": 2,
+   "unit_cost_kobo": 215000
+  },
+  {
+   "product_id": "bb-7-habits-of-highly-effective-people",
+   "qty": 4,
+   "unit_cost_kobo": 230000
+  },
+  {
+   "product_id": "bb-tiny-habits",
+   "qty": 3,
+   "unit_cost_kobo": 180000
+  },
+  {
+   "product_id": "bb-digital-minimalism",
+   "qty": 1,
+   "unit_cost_kobo": 210000
+  },
+  {
+   "product_id": "bb-stop-chasing-influencers",
+   "qty": 1,
+   "unit_cost_kobo": 180000
+  },
+  {
+   "product_id": "bb-discipline-is-destiny",
+   "qty": 1,
+   "unit_cost_kobo": 210000
+  },
+  {
+   "product_id": "bb-those-who-live-without-discipline",
+   "qty": 1,
+   "unit_cost_kobo": 150000
+  },
+  {
+   "product_id": "bb-hope-help-and-healing",
+   "qty": 1,
+   "unit_cost_kobo": 150000
+  },
+  {
+   "product_id": "bb-changes-that-heal",
+   "qty": 1,
+   "unit_cost_kobo": 150000
+  },
+  {
+   "product_id": "bb-emotional-intelligence",
+   "qty": 4,
+   "unit_cost_kobo": 220000
+  },
+  {
+   "product_id": "bb-80-20-sales-and-marketing",
+   "qty": 1,
+   "unit_cost_kobo": 215000
+  },
+  {
+   "product_id": "bb-the-psychology-of-selling",
+   "qty": 1,
+   "unit_cost_kobo": 210000
+  },
+  {
+   "product_id": "bb-marketing-101",
+   "qty": 1,
+   "unit_cost_kobo": 240000
+  },
+  {
+   "product_id": "bb-sales-dogs",
+   "qty": 1,
+   "unit_cost_kobo": 230000
+  },
+  {
+   "product_id": "bb-sell-like-crazy",
+   "qty": 2,
+   "unit_cost_kobo": 270000
+  },
+  {
+   "product_id": "bb-this-is-strategy",
+   "qty": 1,
+   "unit_cost_kobo": 220000
+  },
+  {
+   "product_id": "bb-100m-leads",
+   "qty": 1,
+   "unit_cost_kobo": 210000
+  },
+  {
+   "product_id": "bb-act-like-a-lady-think-like-a-man",
+   "qty": 1,
+   "unit_cost_kobo": 150000
+  },
+  {
+   "product_id": "bb-art-of-detachment",
+   "qty": 1,
+   "unit_cost_kobo": 145000
+  },
+  {
+   "product_id": "bb-boundaries",
+   "qty": 3,
+   "unit_cost_kobo": 237000
+  },
+  {
+   "product_id": "bb-built-on-purpose",
+   "qty": 2,
+   "unit_cost_kobo": 150000
+  },
+  {
+   "product_id": "bb-surrounded-by-bad-bosses",
+   "qty": 1,
+   "unit_cost_kobo": 240000
+  },
+  {
+   "product_id": "bb-surrounded-by-setbacks",
+   "qty": 1,
+   "unit_cost_kobo": 210000
+  },
+  {
+   "product_id": "bb-surrounded-by-energy-vampires",
+   "qty": 1,
+   "unit_cost_kobo": 210000
+  },
+  {
+   "product_id": "bb-can-t-hurt-me",
+   "qty": 2,
+   "unit_cost_kobo": 190000
+  },
+  {
+   "product_id": "bb-change-your-thinking",
+   "qty": 1,
+   "unit_cost_kobo": 185000
+  },
+  {
+   "product_id": "bb-collaborating-with-the-enemy",
+   "qty": 2,
+   "unit_cost_kobo": 180000
+  },
+  {
+   "product_id": "bb-contagious",
+   "qty": 1,
+   "unit_cost_kobo": 210000
+  },
+  {
+   "product_id": "bb-eat-what-you-kill",
+   "qty": 1,
+   "unit_cost_kobo": 210000
+  },
+  {
+   "product_id": "bb-everything-is-f-cked",
+   "qty": 1,
+   "unit_cost_kobo": 295000
+  },
+  {
+   "product_id": "bb-failing-forward",
+   "qty": 1,
+   "unit_cost_kobo": 180000
+  },
+  {
+   "product_id": "bb-goals",
+   "qty": 2,
+   "unit_cost_kobo": 210000
+  },
+  {
+   "product_id": "bb-good-vibes",
+   "qty": 1,
+   "unit_cost_kobo": 210000
+  },
+  {
+   "product_id": "bb-ikigai",
+   "qty": 3,
+   "unit_cost_kobo": 210000
+  },
+  {
+   "product_id": "bb-the-laws-of-human-nature",
+   "qty": 1,
+   "unit_cost_kobo": 390000
+  },
+  {
+   "product_id": "bb-the-magic-of-thinking-big",
+   "qty": 4,
+   "unit_cost_kobo": 210000
+  },
+  {
+   "product_id": "bb-man-s-search-for-meaning",
+   "qty": 1,
+   "unit_cost_kobo": 210000
+  },
+  {
+   "product_id": "bb-master-your-time",
+   "qty": 1,
+   "unit_cost_kobo": 145000
+  },
+  {
+   "product_id": "bb-mastery",
+   "qty": 2,
+   "unit_cost_kobo": 300000
+  },
+  {
+   "product_id": "bb-mindset",
+   "qty": 2,
+   "unit_cost_kobo": 250000
+  },
+  {
+   "product_id": "bb-the-obstacle-is-the-way",
+   "qty": 1,
+   "unit_cost_kobo": 180000
+  },
+  {
+   "product_id": "bb-the-pivot-year",
+   "qty": 1,
+   "unit_cost_kobo": 210000
+  },
+  {
+   "product_id": "bb-the-power-of-positive-thinking",
+   "qty": 1,
+   "unit_cost_kobo": 160000
+  },
+  {
+   "product_id": "bb-read-people-like-a-book",
+   "qty": 1,
+   "unit_cost_kobo": 270000
+  },
+  {
+   "product_id": "bb-the-power-of-your-subconscious-mind",
+   "qty": 1,
+   "unit_cost_kobo": 360000
+  },
+  {
+   "product_id": "bb-surrounded-by-liars",
+   "qty": 1,
+   "unit_cost_kobo": 190000
+  },
+  {
+   "product_id": "bb-surrounded-by-narcissists",
+   "qty": 1,
+   "unit_cost_kobo": 190000
+  },
+  {
+   "product_id": "bb-surrounded-by-psychopaths",
+   "qty": 1,
+   "unit_cost_kobo": 190000
+  },
+  {
+   "product_id": "bb-the-mountain-is-you",
+   "qty": 3,
+   "unit_cost_kobo": 180000
+  },
+  {
+   "product_id": "bb-think-like-a-monk",
+   "qty": 3,
+   "unit_cost_kobo": 180000
+  },
+  {
+   "product_id": "bb-unlimited-power",
+   "qty": 1,
+   "unit_cost_kobo": 340000
+  },
+  {
+   "product_id": "bb-winning-the-mind-battle",
+   "qty": 1,
+   "unit_cost_kobo": 150000
+  },
+  {
+   "product_id": "bb-you-are-a-badass",
+   "qty": 1,
+   "unit_cost_kobo": 180000
+  },
+  {
+   "product_id": "bb-you-become-what-you-think",
+   "qty": 2,
+   "unit_cost_kobo": 180000
+  },
+  {
+   "product_id": "bb-battlefield-of-the-mind",
+   "qty": 1,
+   "unit_cost_kobo": 220000
+  },
+  {
+   "product_id": "bb-beauty-for-ashes",
+   "qty": 1,
+   "unit_cost_kobo": 210000
+  },
+  {
+   "product_id": "bb-billy-graham-dialogue",
+   "qty": 1,
+   "unit_cost_kobo": 160000
+  },
+  {
+   "product_id": "bb-classic-sermon",
+   "qty": 1,
+   "unit_cost_kobo": 210000
+  },
+  {
+   "product_id": "bb-the-purpose-driven-life",
+   "qty": 2,
+   "unit_cost_kobo": 240000
+  },
+  {
+   "product_id": "bb-erasing-hell",
+   "qty": 3,
+   "unit_cost_kobo": 120000
+  },
+  {
+   "product_id": "bb-fit-to-be-tied",
+   "qty": 1,
+   "unit_cost_kobo": 160000
+  },
+  {
+   "product_id": "bb-the-five-love-languages",
+   "qty": 2,
+   "unit_cost_kobo": 160000
+  },
+  {
+   "product_id": "bb-good-morning-holy-spirit",
+   "qty": 1,
+   "unit_cost_kobo": 185000
+  },
+  {
+   "product_id": "bb-growing-up-spiritually",
+   "qty": 1,
+   "unit_cost_kobo": 180000
+  },
+  {
+   "product_id": "bb-he-gave-gift-unto-men",
+   "qty": 1,
+   "unit_cost_kobo": 180000
+  },
+  {
+   "product_id": "bb-he-motions-by-t-d-jakes",
+   "qty": 1,
+   "unit_cost_kobo": 155000
+  },
+  {
+   "product_id": "bb-hosting-his-presence",
+   "qty": 1,
+   "unit_cost_kobo": 180000
+  },
+  {
+   "product_id": "bb-imitation-of-christ",
+   "qty": 1,
+   "unit_cost_kobo": 90000
+  },
+  {
+   "product_id": "bb-knowing-god",
+   "qty": 1,
+   "unit_cost_kobo": 210000
+  },
+  {
+   "product_id": "bb-letter-to-my-daughter",
+   "qty": 3,
+   "unit_cost_kobo": 150000
+  },
+  {
+   "product_id": "bb-letter-to-my-son",
+   "qty": 4,
+   "unit_cost_kobo": 150000
+  },
+  {
+   "product_id": "bb-little-black-sheep",
+   "qty": 1,
+   "unit_cost_kobo": 150000
+  },
+  {
+   "product_id": "bb-love-the-way-to-victory",
+   "qty": 1,
+   "unit_cost_kobo": 210000
+  },
+  {
+   "product_id": "bb-never-give-up",
+   "qty": 2,
+   "unit_cost_kobo": 210000
+  },
+  {
+   "product_id": "bb-no-more-crumbs",
+   "qty": 2,
+   "unit_cost_kobo": 150000
+  },
+  {
+   "product_id": "bb-plans-purposes-and-pursuits",
+   "qty": 2,
+   "unit_cost_kobo": 170000
+  },
+  {
+   "product_id": "bb-rediscovering-the-kingdom",
+   "qty": 2,
+   "unit_cost_kobo": 330000
+  },
+  {
+   "product_id": "bb-seize-the-day",
+   "qty": 1,
+   "unit_cost_kobo": 185000
+  },
+  {
+   "product_id": "bb-sermon-on-the-mount",
+   "qty": 1,
+   "unit_cost_kobo": 160000
+  },
+  {
+   "product_id": "bb-spirit-controlled-temperament",
+   "qty": 2,
+   "unit_cost_kobo": 240000
+  },
+  {
+   "product_id": "bb-the-artist-s-way",
+   "qty": 1,
+   "unit_cost_kobo": 160000
+  },
+  {
+   "product_id": "bb-the-faith-study-course",
+   "qty": 1,
+   "unit_cost_kobo": 170000
+  },
+  {
+   "product_id": "bb-the-pilgrim-s-progress",
+   "qty": 2,
+   "unit_cost_kobo": 210000
+  },
+  {
+   "product_id": "bb-the-power-of-a-praying-wife",
+   "qty": 2,
+   "unit_cost_kobo": 145000
+  },
+  {
+   "product_id": "bb-the-secret-of-happiness",
+   "qty": 1,
+   "unit_cost_kobo": 130000
+  },
+  {
+   "product_id": "bb-understanding-the-purpose-and-power-of-w",
+   "qty": 1,
+   "unit_cost_kobo": 180000
+  },
+  {
+   "product_id": "bb-unleashing-heaven-s-breath",
+   "qty": 1,
+   "unit_cost_kobo": 230000
+  },
+  {
+   "product_id": "bb-where-in-the-world-is-osama-bin-laden",
+   "qty": 1,
+   "unit_cost_kobo": 120000
+  },
+  {
+   "product_id": "bb-the-pursuit-of-happyness",
+   "qty": 1,
+   "unit_cost_kobo": 150000
+  },
+  {
+   "product_id": "bb-blood-river",
+   "qty": 1,
+   "unit_cost_kobo": 175000
+  },
+  {
+   "product_id": "bb-hitler-s-secret-book",
+   "qty": 1,
+   "unit_cost_kobo": 150000
+  },
+  {
+   "product_id": "bb-tozer-on-christian-leadership",
+   "qty": 1,
+   "unit_cost_kobo": 190000
+  },
+  {
+   "product_id": "bb-winning-with-people",
+   "qty": 2,
+   "unit_cost_kobo": 190000
+  },
+  {
+   "product_id": "bb-the-21-irrefutable-laws-of-leadership",
+   "qty": 3,
+   "unit_cost_kobo": 190000
+  },
+  {
+   "product_id": "bb-10-laws-of-leadership",
+   "qty": 1,
+   "unit_cost_kobo": 260000
+  },
+  {
+   "product_id": "bb-the-self-aware-leader",
+   "qty": 2,
+   "unit_cost_kobo": 157000
+  },
+  {
+   "product_id": "bb-leading-in-tough-times",
+   "qty": 3,
+   "unit_cost_kobo": 170000
+  },
+  {
+   "product_id": "bb-101-essays-that-will-change-the-way-you-",
+   "qty": 1,
+   "unit_cost_kobo": 450000
+  },
+  {
+   "product_id": "bb-the-power-of-a-praying-husband",
+   "qty": 2,
+   "unit_cost_kobo": 240000
+  },
+  {
+   "product_id": "bb-gifted-hands",
+   "qty": 1,
+   "unit_cost_kobo": 140000
+  },
+  {
+   "product_id": "bb-think-big",
+   "qty": 1,
+   "unit_cost_kobo": 140000
+  },
+  {
+   "product_id": "bb-the-chronicles-of-narnia",
+   "qty": 1,
+   "unit_cost_kobo": 110000
+  },
+  {
+   "product_id": "bb-make-today-count",
+   "qty": 3,
+   "unit_cost_kobo": 200000
+  },
+  {
+   "product_id": "bb-how-successful-people-lead",
+   "qty": 2,
+   "unit_cost_kobo": 200000
+  },
+  {
+   "product_id": "bb-how-successful-people-grow",
+   "qty": 4,
+   "unit_cost_kobo": 200000
+  },
+  {
+   "product_id": "bb-you-have-a-brain",
+   "qty": 1,
+   "unit_cost_kobo": 250000
+  },
+  {
+   "product_id": "bb-why-you-act-the-way-you-do",
+   "qty": 1,
+   "unit_cost_kobo": 220000
+  },
+  {
+   "product_id": "bb-how-to-stop-worrying-and-start-living",
+   "qty": 1,
+   "unit_cost_kobo": 270000
+  },
+  {
+   "product_id": "bb-deep-work",
+   "qty": 1,
+   "unit_cost_kobo": 370000
+  },
+  {
+   "product_id": "bb-there-was-a-country",
+   "qty": 1,
+   "unit_cost_kobo": 250000
+  },
+  {
+   "product_id": "bb-the-millionaire-fastlane",
+   "qty": 1,
+   "unit_cost_kobo": 327000
+  },
+  {
+   "product_id": "bb-nemesis",
+   "qty": 1,
+   "unit_cost_kobo": 200000
+  },
+  {
+   "product_id": "bb-developing-the-leader-within-you",
+   "qty": 1,
+   "unit_cost_kobo": 280000
+  },
+  {
+   "product_id": "bb-the-almanack-of-naval-ravikant",
+   "qty": 1,
+   "unit_cost_kobo": 250000
+  },
+  {
+   "product_id": "bb-things-i-wish-i-had-known",
+   "qty": 1,
+   "unit_cost_kobo": 250000
+  },
+  {
+   "product_id": "bb-a5-notebook",
+   "qty": 2,
+   "unit_cost_kobo": 180000
+  },
+  {
+   "product_id": "bb-highlighter",
+   "qty": 3,
+   "unit_cost_kobo": 45000
+  },
+  {
+   "product_id": "bb-sticky-notes",
+   "qty": 2,
+   "unit_cost_kobo": 95000
+  },
+  {
+   "product_id": "bb-eraser-with-case",
+   "qty": 2,
+   "unit_cost_kobo": 100000
+  },
+  {
+   "product_id": "bb-gel-pen",
+   "qty": 1,
+   "unit_cost_kobo": 52000
+  }
+ ]
+}

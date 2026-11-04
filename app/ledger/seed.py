@@ -9,7 +9,8 @@ from app.ledger.store import MemoryStore
 SEED = Path(__file__).resolve().parents[2] / "seed"
 
 
-DEMO_SHOPS = {"bookshop": SEED / "bookshop.json", "provisions": SEED / "demo_shop.json"}
+DEMO_SHOPS = {"bookshop": SEED / "bookshop.json", "provisions": SEED / "demo_shop.json",
+              "broadway": SEED / "broadway.json"}   # Ife's Broadway Books, the judges' demo shop
 
 
 def demo_shop_path(name=None):
@@ -25,6 +26,8 @@ def add_demo_history(store, path, media=None):
         from app.ledger.bookshop_week import add_history
     elif name == DEMO_SHOPS["provisions"].name:
         from app.ledger.demo_week import add_history
+    elif name == DEMO_SHOPS["broadway"].name:
+        from app.ledger.broadway_history import add_history
     else:
         return store
     return add_history(store, media=media)

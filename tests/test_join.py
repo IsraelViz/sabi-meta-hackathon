@@ -114,21 +114,26 @@ def test_judges_open_the_demo_shop_in_one_tap_and_never_see_the_full_number(shop
     assert "7015065065" not in c.get("/join/api/demo").text
     token = c.post("/join/api/demo").json()["token"]
     me = c.get("/api/me", headers=bearer(token)).json()
-    assert me["shop"] == "Nkechi Books & Stationery" and me["chat"]
-    products = c.get("/api/products", headers=bearer(token)).json()
-    assert any(p["name"] == "New General Mathematics JSS1" for p in products)
+    assert me["shop"] == "Broadway Books" and me["chat"]
+    products = {p["name"]: p for p in c.get("/api/products", headers=bearer(token)).json()}
+    assert products["Emotional Intelligence"]["stock"] == 3 and products["Emotional Intelligence"]["photo"]
+    assert "Agbowo, Ibadan" in shops.get(judge.find(shops, "2347015065065")).store.business["shop_info"]
     # Nobody can register a shop with the owner's number
     assert c.post("/join/api/register", json={**IFE, "phone": "07015065065"}).status_code == 409
     # Start-up again: no second shop, PIN kept to the setting
     judge.ensure(shops, "2347015065065", "2026")
     assert shops.db.execute("select count(*) as n from pilot.shops where owner_phone = '2347015065065'").fetchone()["n"] == 1
-    # DEMO_LOGIN_PHONE set to another number: the demo shop moves there, and the owner's number is free to join
-    judge.ensure(shops, "2348000000001", "2026", old_phone="2347015065065")
-    assert shops.row(judge.find(shops, "2348000000001"))["name"] == "Nkechi Books & Stationery"
-    assert judge.find(shops, "2347015065065") is None
-    assert c.post("/join/api/register", json={**IFE, "shop_name": "Broadway Books", "phone": "07015065065"}).status_code == 200
 
 
 def test_masked_numbers():
     from app.judge import masked
     assert masked("2347015065065") == "0701 XXXX 065" and masked("447911123456") == "4479 XXXX 456"
+
+
+def test_the_earlier_demo_shop_is_deleted_to_free_its_number(shops, monkeypatch):  # noqa: F811
+    from app import judge
+    row, _ = shops.create("Nkechi Books & Stationery", "books", "Nkechi")
+    shops.accounts.set_login(row["id"], "2347015065065", "2026")
+    monkeypatch.setattr(judge, "_create", lambda *a: None)     # the new one is built in the test above
+    judge.ensure(shops, "2347015065065", "2026")
+    assert shops.row(row["id"]) is None and judge.find(shops, "2347015065065") is None
