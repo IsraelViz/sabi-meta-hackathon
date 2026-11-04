@@ -660,6 +660,15 @@ const ANSWERED = "sabi.answered";
 function copy(text, btn) {
   navigator.clipboard?.writeText(text).then(() => { const t = btn.textContent; btn.textContent = "Copied ✓"; setTimeout(() => (btn.textContent = t), 1500); });
 }
+// WhatsApp's own markup, as WhatsApp shows it: *bold*, _italic_, ~strike~. Escaped text in; links are left alone.
+function waFormat(html) {
+  const links = [];
+  const safe = html.replace(/https?:\/\/[^\s<]+/g, u => `\u0000${links.push(u) - 1}\u0000`);
+  const mark = (ch, tag) => new RegExp(`(^|[\s(•\-–—:])\${ch}(?=\S)([^${ch}\n]*?\S)\${ch}(?=$|[\s).,!?:;])`, "gm");
+  return safe.replace(mark("*", "b"), "$1<b>$2</b>").replace(mark("_", "i"), "$1<i>$2</i>").replace(mark("~", "s"), "$1<s>$2</s>")
+    .replace(/\u0000(\d+)\u0000/g, (_, i) => links[i]);
+}
+
 function linkify(html) {
   // Escaped text in; only real links become anchors. "/s/..." statement links are made absolute so she can share them.
   return html.replace(/(https?:\/\/[^\s<]+|(?<![\w/])\/s\/[\w.-]+)/g, url => {
@@ -681,7 +690,7 @@ function bubble(m) {
   el.dataset.id = m.id;
   const photo = m.image ? (ME?.low_data && m.id ? `<button class="load-photo" data-src="${esc(m.image)}">📷 Tap to load photo</button>`
     : `<img alt="" src="${esc(m.image)}">`) : "";
-  el.innerHTML = `${photo}${m.body ? `<div class="body">${linkify(esc(m.body))}</div>` : ""}
+  el.innerHTML = `${photo}${m.body ? `<div class="body">${linkify(waFormat(esc(m.body)))}</div>` : ""}
     ${m.buttons?.length ? `<div class="btns">${m.buttons.map(b =>
       `<button data-bid="${esc(b.id)}" ${done ? "disabled" : ""}>${esc(b.title)}</button>`).join("")}</div>` : ""}
     <div class="when">${m.at ? new Date(m.at).toLocaleTimeString("en-NG", { hour: "numeric", minute: "2-digit" }) : ""}

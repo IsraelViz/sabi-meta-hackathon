@@ -21,6 +21,15 @@ function newId() {
 function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
+// WhatsApp's own markup, as WhatsApp shows it: *bold*, _italic_, ~strike~. Escaped text in; links are left alone.
+function waFormat(html) {
+  const links = [];
+  const safe = html.replace(/https?:\/\/[^\s<]+/g, u => `\u0000${links.push(u) - 1}\u0000`);
+  const mark = (ch, tag) => new RegExp(`(^|[\s(•\-–—:])\${ch}(?=\S)([^${ch}\n]*?\S)\${ch}(?=$|[\s).,!?:;])`, "gm");
+  return safe.replace(mark("*", "b"), "$1<b>$2</b>").replace(mark("_", "i"), "$1<i>$2</i>").replace(mark("~", "s"), "$1<s>$2</s>")
+    .replace(/\u0000(\d+)\u0000/g, (_, i) => links[i]);
+}
+
 function linkify(html) {
   return html.replace(/https?:\/\/[^\s<]+/g, url => {
     const clean = url.replace(/[).,;:!?]+$/, "");
@@ -36,7 +45,7 @@ function toast(text) {
 function bubble(m) {
   const el = document.createElement("div");
   el.className = `msg ${m.role === "in" ? "me" : m.role === "note" ? "note" : "them"}`;
-  el.innerHTML = `${m.image ? `<img alt="" src="${esc(m.image)}">` : ""}${m.body ? linkify(esc(m.body)) : ""}
+  el.innerHTML = `${m.image ? `<img alt="" src="${esc(m.image)}">` : ""}${m.body ? linkify(waFormat(esc(m.body))) : ""}
     <div class="when">${m.at ? new Date(m.at).toLocaleTimeString("en-NG", { hour: "numeric", minute: "2-digit" }) : ""}</div>`;
   return el;
 }

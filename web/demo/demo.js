@@ -24,6 +24,15 @@ function toast(text) {
 // ---- chat rendering ---------------------------------------------------------
 
 // Links in a reply (like the business statement) open in a new tab. Runs on escaped text, so only real URLs match.
+// WhatsApp's own markup, as WhatsApp shows it: *bold*, _italic_, ~strike~. Escaped text in; links are left alone.
+function waFormat(html) {
+  const links = [];
+  const safe = html.replace(/https?:\/\/[^\s<]+/g, u => `\u0000${links.push(u) - 1}\u0000`);
+  const mark = (ch, tag) => new RegExp(`(^|[\s(•\-–—:])\${ch}(?=\S)([^${ch}\n]*?\S)\${ch}(?=$|[\s).,!?:;])`, "gm");
+  return safe.replace(mark("*", "b"), "$1<b>$2</b>").replace(mark("_", "i"), "$1<i>$2</i>").replace(mark("~", "s"), "$1<s>$2</s>")
+    .replace(/\u0000(\d+)\u0000/g, (_, i) => links[i]);
+}
+
 function linkify(html) {
   return html.replace(/(https?:\/\/[^\s<]+|\/demo\/api\/[\w-]+\/statement)/g, url => {
     const clean = url.replace(/[).,;:!?]+$/, "");
@@ -35,7 +44,7 @@ function addBubble(who, cls, { body = "", image = null, buttons = [], meta = "" 
   const chat = $(".chat", phones[who]);
   const el = document.createElement("div");
   el.className = `msg ${cls}`;
-  el.innerHTML = `${image ? `<img alt="" src="${esc(image)}">` : ""}${linkify(esc(body))}
+  el.innerHTML = `${image ? `<img alt="" src="${esc(image)}">` : ""}${linkify(waFormat(esc(body)))}
     ${meta ? `<div class="meta">${esc(meta)}</div>` : ""}`;
   if (buttons.length) {
     const box = document.createElement("div");
